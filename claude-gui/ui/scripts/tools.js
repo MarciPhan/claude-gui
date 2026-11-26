@@ -337,6 +337,9 @@ function reviewLast() {
 }
 
 function initTools() {
+  for (const b of document.querySelectorAll("#themeSeg button")) {
+    b.addEventListener("click", () => { try { localStorage.setItem(THEME_KEY, b.dataset.mode); } catch (e) { /* jen pro tuto relaci */ } applyTheme(b.dataset.mode); });
+  }
   const pop = $("toolsPop");
   $("btnTools").addEventListener("click", (e) => { e.stopPropagation(); pop.hidden = !pop.hidden; });
   document.addEventListener("click", (e) => { if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });

@@ -412,7 +412,7 @@ function loadMermaid() {
       document.head.appendChild(s);
       const m = window.mermaid;
       if (!m) throw new Error("Knihovna diagramů se nenačetla.");
-      const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const dark = isDark();
       m.initialize({ startOnLoad: false, securityLevel: "strict", theme: dark ? "dark" : "neutral", fontFamily: "inherit" });
       return m;
     })().catch((e) => { mermaidP = null; throw e; });

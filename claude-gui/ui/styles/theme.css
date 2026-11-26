@@ -6,12 +6,17 @@
   --serif: "Source Serif 4", "Tiempos Text", "Noto Serif", "DejaVu Serif", Georgia, serif;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #000000; --panel: #0a0a0a; --surface: #141414; --sunken: #070707;
     --text: #ececec; --muted: #a3a3a3; --faint: #7d7d7d;
     --border: #262626; --border-strong: #3d3d3d; --user-bg: #1a1a1a; --code-bg: #0d0d0d;
   }
 }
+:root[data-theme="dark"] {
+    --bg: #000000; --panel: #0a0a0a; --surface: #141414; --sunken: #070707;
+    --text: #ececec; --muted: #a3a3a3; --faint: #7d7d7d;
+    --border: #262626; --border-strong: #3d3d3d; --user-bg: #1a1a1a; --code-bg: #0d0d0d;
+  }
 .top h1, .u-head h1, .empty .big, .modal-head h2 { font-family: var(--serif); font-weight: 600; }
 .top h1 { font-size: 15px; flex: none; max-width: 55%; }
 .md { font-family: var(--serif); font-size: 15.5px; line-height: 1.65; }
@@ -112,8 +117,9 @@
 .lim-refresh.spin .ic { animation: spin .8s linear infinite; }
 .lim-none { font-size: 12px; color: var(--faint); }
 @media (prefers-color-scheme: dark) {
-  .composer-card { box-shadow: none; }
+  :root:not([data-theme="light"]) .composer-card { box-shadow: none; }
 }
+:root[data-theme="dark"] .composer-card { box-shadow: none; }
 @media (max-width: 860px) {
   .top-ctrl { width: 100%; } .limits { width: 100%; } .lim { flex: 1; min-width: 0; }
   .u-head .limits { order: 5; width: 100%; }
@@ -147,9 +153,11 @@
 .messages { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); padding-top: 28px; padding-bottom: 26px; scroll-padding: 28px; }
 .top { position: relative; z-index: 3; }
 @media (prefers-color-scheme: dark) {
-  .composer-card { background: #181818; border-color: #333; }
-  .composer-card:focus-within { border-color: #3d3d3d; }
+  :root:not([data-theme="light"]) .composer-card { background: #181818; border-color: #333; }
+  :root:not([data-theme="light"]) .composer-card:focus-within { border-color: #3d3d3d; }
 }
+:root[data-theme="dark"] .composer-card { background: #181818; border-color: #333; }
+:root[data-theme="dark"] .composer-card:focus-within { border-color: #3d3d3d; }
 .top h1 { text-wrap: nowrap; white-space: nowrap; flex: 0 1 auto; min-width: 0; max-width: 62%; overflow: hidden; text-overflow: ellipsis; }
 .top-info { flex: 1 1 260px; }
 /* postranní panel: jednořádkové položky, méně šumu */

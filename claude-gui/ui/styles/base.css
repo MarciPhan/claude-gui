@@ -29,7 +29,7 @@
   --ease: cubic-bezier(.22, 1, .36, 1);
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #000000;
     --panel: #0a0a0a;
     --surface: #141414;
@@ -56,6 +56,32 @@
     --shadow-lg: 0 20px 50px rgba(0, 0, 0, .6), 0 4px 12px rgba(0, 0, 0, .3);
   }
 }
+:root[data-theme="dark"] {
+    --bg: #000000;
+    --panel: #0a0a0a;
+    --surface: #141414;
+    --sunken: #070707;
+    --text: #ececec;
+    --muted: #a3a3a3;
+    --faint: #7d7d7d;
+    --border: #262626;
+    --border-strong: #3d3d3d;
+    --hover: rgba(255, 255, 255, .07);
+    --accent: #f08f57;
+    --accent-hover: #f5a574;
+    --accent-text: #211205;
+    --accent-soft: rgba(240, 143, 87, .17);
+    --user-bg: #1a1a1a;
+    --code-bg: #0d0d0d;
+    --danger: #ff8189;
+    --danger-soft: rgba(255, 100, 110, .13);
+    --ok: #62d49c;
+    --warn-c: #e3b341;
+    --chart-in: #8a8173;
+    --chart-out: #f08f57;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-lg: 0 20px 50px rgba(0, 0, 0, .6), 0 4px 12px rgba(0, 0, 0, .3);
+  }
 
 /* ---------- Základ a systémové prvky ---------- */
 * { box-sizing: border-box; }

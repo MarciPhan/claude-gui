@@ -138,6 +138,10 @@
     "neprovedeno": "not executed",
     "Vymazat historii": "Clear history",
     "Vymazat celý záznam použití?": "Clear the whole usage log?",
+    "Vzhled": "Appearance",
+    "Podle systému": "Follow system",
+    "Světlý": "Light",
+    "Tmavý": "Dark",
     "Nová konverzace": "New conversation", "Zavřít": "Close", "Pracovní složka": "Working folder",
     "Claude poběží v této složce. Vyberte některou z dříve použitých, nebo zadejte cestu (funguje i ~).":
       "Claude will run in this folder. Pick one you used before or type a path (~ works too).",
