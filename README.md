@@ -1,25 +1,27 @@
 # Claude GUI
 
-Lokální nativní okno (GTK4 + libadwaita + WebKitGTK 6.0) pro [Claude Code](https://claude.com/claude-code) CLI. Žádný server ani prohlížeč, UI je jediný soubor `index.html`.
+**English** | [Čeština](README.cs.md)
 
-Funkce: více konverzací najednou, historie a pokračování (`--resume`), složky/projekty, model a effort, limity a dashboard využití, split view, diffy v nástrojích, přílohy (drag & drop, vložení ze schránky, náhledy), vzorce (KaTeX), grafy, Mermaid diagramy, tabulky, zobrazení obrázků/audia/videa.
+A local native window (GTK4 + libadwaita + WebKitGTK 6.0) for the [Claude Code](https://claude.com/claude-code) CLI. No server, no browser: the UI is a single `index.html`. The interface is currently in Czech.
 
-Úspora tokenů: velké obrázky se zmenší (delší strana 1400 px) a obrázky ≤ 5 MB se posílají přímo ve zprávě; krátký systémový pokyn.
+Features: several conversations at once, history and resume (`--resume`), folders/projects, model and effort selection, limits and a usage dashboard, split view, diffs in tool calls, attachments (drag & drop, clipboard paste, previews), formulas (KaTeX), charts, Mermaid diagrams, tables, inline images/audio/video.
 
-## Požadavky
+Token saving: large images are downscaled (longest side 1400 px), images up to 5 MB are sent inline in the message, and the system hint is short.
 
-- nainstalovaný a přihlášený [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) (`claude` v PATH)
-- Python 3 s PyGObject, GTK 4, libadwaita, WebKitGTK 6.0
-- volitelně Pillow (zmenšení obrázků)
+## Requirements
 
-| Distribuce | Balíčky |
+- installed and logged-in [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) (`claude` in PATH)
+- Python 3 with PyGObject, GTK 4, libadwaita, WebKitGTK 6.0
+- optional: Pillow (image downscaling)
+
+| Distro | Packages |
 |---|---|
 | Fedora | `sudo dnf install python3-gobject gtk4 libadwaita webkitgtk6.0 python3-pillow` |
 | Debian/Ubuntu (24.04+) | `sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-webkit-6.0 python3-pil` |
 | Arch | `sudo pacman -S python-gobject gtk4 libadwaita webkitgtk-6.0 python-pillow` |
 | openSUSE | `sudo zypper install python3-gobject-Gdk typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1 typelib-1_0-WebKit-6_0 python3-Pillow` |
 
-## Instalace
+## Install
 
 ```
 git clone https://github.com/MarciPhan/claude-gui.git
@@ -27,12 +29,12 @@ cd claude-gui
 ./install.sh
 ```
 
-Kopíruje se do `~/.local/share/claude-gui`, přidá se položka „Claude Code“ do nabídky aplikací. Odinstalace: `./install.sh --uninstall`. Bez instalace lze spustit přímo `python3 claude-gui/app.py`.
+Copies the app to `~/.local/share/claude-gui` and adds a "Claude Code" launcher to the application menu (no sudo). Uninstall with `./install.sh --uninstall`. You can also run it without installing: `python3 claude-gui/app.py`.
 
 ## Data
 
-Konverzace se čtou z `~/.claude/projects` (stejné jako CLI). Nahrané přílohy jsou v `~/.local/share/claude-gui-data/uploads` a po 14 dnech se mažou.
+Conversations are read from `~/.claude/projects` (the same as the CLI). Uploaded attachments live in `~/.local/share/claude-gui-data/uploads` and are deleted after 14 days.
 
-## Licence a třetí strany
+## License and third parties
 
-Kód: MIT. Součástí jsou knihovny [KaTeX](https://katex.org) (MIT) a [Mermaid](https://mermaid.js.org) (MIT) v adresáři `claude-gui/vendor`. „Claude“ a jeho logo jsou ochranné známky společnosti Anthropic; projekt je neoficiální.
+Code: MIT. Bundled libraries: [KaTeX](https://katex.org) (MIT) and [Mermaid](https://mermaid.js.org) (MIT) in `claude-gui/vendor`. "Claude" and its logo are trademarks of Anthropic; this project is unofficial.
