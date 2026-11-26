@@ -26,7 +26,6 @@
     <nav class="nav" aria-label="Zobrazení">
       <button id="tabChat" class="nav-item active" type="button"><span data-icon="chat"></span><span>Konverzace</span></button>
       <button id="tabProjects" class="nav-item" type="button"><span data-icon="folder"></span><span>Pracovní prostory</span></button>
-      <button id="tabUsage" class="nav-item" type="button"><span data-icon="usage"></span><span>Využití</span></button>
       <button id="tabSplit" class="nav-item" type="button" title="Více konverzací vedle sebe (Ctrl+\)"><span data-icon="split"></span><span>Rozdělit</span></button>
     </nav>
     <div class="search">
@@ -35,7 +34,7 @@
     </div>
     <div id="searchInfo" class="search-info" hidden></div>
     <nav id="list" class="list" aria-label="Konverzace"></nav>
-    <button id="glimpse" class="glimpse" type="button" title="Otevřít přehled využití">
+    <button id="glimpse" class="glimpse" type="button" hidden title="Otevřít přehled využití">
       <div class="glimpse-top"><span>Dnes</span><span id="glimpseMsgs"></span></div>
       <div class="glimpse-val" id="glimpseVal">Načítám…</div>
     </button>
@@ -241,6 +240,8 @@
       <button type="button" data-lang="en" translate="no">English</button>
     </div>
     <div class="field-hint">Automaticky = podle jazyka systému.</div>
+    <div class="field-label">Využití</div>
+    <button id="setUsage" class="btn" type="button">Přehled využití…</button>
     <div class="field-label">Přístupy</div>
     <button id="setVault" class="btn" type="button" title="Šifrovaný trezor přístupů k serverům (FTP, SSH…)">Přístupy (trezor)…</button>
   </div>

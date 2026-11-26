@@ -219,7 +219,7 @@ function init() {
   });
   $("tabChat").addEventListener("click", () => setSideMode("chats"));
   $("tabProjects").addEventListener("click", () => setSideMode("projects"));
-  $("tabUsage").addEventListener("click", () => setView("usage"));
+  $("setUsage").addEventListener("click", () => { $("dlgSettings").hidden = true; setView("usage"); });
   $("btnClear").addEventListener("click", () => { const c = state.current; if (c && c.cwd) { startChatIn(c.cwd); showToast("Kontext je čistý, stará konverzace zůstala v seznamu."); } });
   $("effort").addEventListener("change", () => localStorage.setItem("cg-effort", $("effort").value));
   $("btnPick").addEventListener("click", (e) => { e.stopPropagation(); togglePop(); });

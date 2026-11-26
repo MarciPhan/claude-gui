@@ -82,7 +82,6 @@ function setView(v) {
   document.body.dataset.view = v;
   $("tabChat").classList.toggle("active", v === "chat" && state.sideMode === "chats");
   $("tabProjects").classList.toggle("active", v === "chat" && state.sideMode === "projects");
-  $("tabUsage").classList.toggle("active", v === "usage");
   if (v === "usage") { closeSidebar(); loadUsage(); }
 }
 
