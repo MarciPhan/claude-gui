@@ -579,6 +579,9 @@ button.row:hover .row-name { color: var(--accent); }
 
 /* ---------- v4: akce u zpráv, nápovědy, posun dolů, připnutí ---------- */
 .msg { position: relative; }
+.prov-label { font-size: 11.5px; font-weight: 650; color: var(--accent); margin: 0 0 3px; letter-spacing: .02em; }
+.switch-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.opt[disabled] { opacity: .45; cursor: not-allowed; }
 .msg-actions { position: absolute; bottom: -24px; display: flex; gap: 2px; opacity: 0; transition: opacity .12s var(--ease); }
 .msg.user .msg-actions { right: 0; }
 .msg.assistant .msg-actions { left: 0; }
@@ -772,6 +775,14 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
 .side-foot .icon-btn { margin-left: auto; margin-right: 4px; width: 28px; height: 28px; }
 .side-foot .icon-btn .ic, .side-foot .icon-btn svg { width: 16px; height: 16px; }
 #dlgSettings .seg { margin: 4px 0 8px; }
+
+.tools-wrap{position:relative;margin-right:auto}
+.composer-bar .attach{margin-right:0}
+.tools-wrap .pop{left:0;right:auto;bottom:calc(100% + 8px);min-width:260px}
+#dlgTools .modal-card{max-width:640px;width:calc(100vw - 32px)}
+#toolsBody{max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:8px}
+#toolsBody textarea{width:100%;min-height:160px;font:inherit;background:var(--hover);color:var(--text);border:1px solid var(--border,#444);border-radius:8px;padding:8px}
+#toolsBody .cwd-item{display:flex;gap:8px;align-items:center;justify-content:space-between}
 </style>
 </head>
 <body data-view="chat">
@@ -836,9 +847,29 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
         <div class="composer-bar">
           <button id="btnAttach" class="icon-btn attach" type="button" title="Přiložit soubory nebo obrázky" aria-label="Přiložit soubory" data-icon="clip"></button>
           <input id="fileIn" type="file" multiple hidden>
+          <div class="tools-wrap">
+            <button id="btnTools" class="icon-btn attach" type="button" title="Nástroje" aria-label="Nástroje" aria-haspopup="true" data-icon="tools"></button>
+            <div id="toolsPop" class="pop" hidden>
+              <div class="pop-sec">
+                <button class="opt" type="button" data-tool="prompts"><span class="opt-name">Knihovna promptů</span><small>Uložené šablony zpráv</small></button>
+                <button class="opt" type="button" data-tool="kb"><span class="opt-name">Znalostní báze</span><small>Trvalé instrukce pro nové konverzace</small></button>
+                <button class="opt" type="button" data-tool="review"><span class="opt-name">Recenze druhým modelem</span><small>Posoudí poslední odpověď jiný poskytovatel</small></button>
+                <button class="opt" type="button" data-tool="compact"><span class="opt-name">Zkomprimovat kontext</span><small>Pošle /compact</small></button>
+                <button class="opt" type="button" data-tool="export"><span class="opt-name">Exportovat konverzaci</span><small>Markdown, HTML nebo PDF</small></button>
+                <button class="opt" type="button" data-tool="preview"><span class="opt-name">Náhled webu / aplikace</span><small>Otevře URL nebo soubor</small></button>
+                <button class="opt" type="button" data-tool="checkpoints"><span class="opt-name">Kontrolní body</span><small>Vrátit změny před během</small></button>
+              </div>
+            </div>
+          </div>
           <div class="pick-wrap">
             <button id="btnPick" class="pick" type="button" aria-haspopup="true" aria-expanded="false"><span id="pickLabel">Model</span><span data-icon="chevdown"></span></button>
             <div id="pop" class="pop" hidden>
+              <div class="pop-sec">
+                <div class="pop-title">Poskytovatel</div>
+                <button class="opt" type="button" data-set="provider" data-v="claude"><span class="opt-name">Claude</span><small>Claude Code CLI</small></button>
+                <button class="opt" type="button" data-set="provider" data-v="codex"><span class="opt-name">Codex</span><small>OpenAI Codex CLI, konverzace zůstává společná</small></button>
+                <button class="opt" type="button" data-set="provider" data-v="opencode"><span class="opt-name">OpenCode</span><small>OpenCode CLI, konverzace zůstává společná</small></button>
+              </div>
               <div class="pop-sec">
                 <div class="pop-title">Model</div>
                 <button class="opt" type="button" data-set="model" data-v=""><span class="opt-name">Výchozí</span><small>podle nastavení Claude Code</small></button>
@@ -877,6 +908,7 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
         </div>
       </div>
       <div hidden>
+        <select id="provider"><option value="claude"></option><option value="codex"></option><option value="opencode"></option></select>
         <select id="mode"><option value="default"></option><option value="acceptEdits"></option><option value="auto"></option><option value="plan"></option><option value="bypassPermissions"></option></select>
         <select id="model"><option value=""></option><option value="opus"></option><option value="sonnet"></option><option value="haiku"></option></select>
         <select id="env"><option value="auto"></option><option value="lean"></option><option value="full"></option></select>
@@ -939,6 +971,12 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
 
 <div id="dropOv" class="drop-ov" hidden><div class="drop-box"><span data-icon="clip"></span><b>Pustit pro přiložení</b><small>obrázky, dokumenty, kód, cokoli</small></div></div>
 
+<div id="dlgTools" class="modal" hidden>
+<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="toolsTitle">
+<div class="modal-head"><h2 id="toolsTitle"></h2><button id="toolsClose" class="icon-btn" data-icon="close" title="Zavřít" aria-label="Zavřít"></button></div>
+<div id="toolsBody"></div>
+<div id="toolsFoot" class="modal-foot"></div>
+</div></div>
 <div id="dlgText" class="modal" hidden>
   <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="dlgTextTitle">
     <div class="modal-head">
@@ -1001,6 +1039,9 @@ const svg = (body, extra = "") =>
   `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${body}</svg>`;
 
 const ICONS = {
+  tools: svg('<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17l3 3 5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-2.2-.5-.5-2.2z"/>'),
+  branch: svg('<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-12 6"/>'),
+  swap: svg('<path d="M7 7h11l-3-3M17 17H6l3 3"/>'),
   split: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>'),
   pencil: svg('<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/>'),
   pin: svg('<path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/>'),
@@ -1479,16 +1520,25 @@ function userEl(text, images) {
   const act = document.createElement("div");
   act.className = "msg-actions";
   act.innerHTML = '<button type="button" class="ma-btn" data-ma="copy" title="Kopírovat">' + ICONS.copy + '</button>' +
-    '<button type="button" class="ma-btn" data-ma="edit" title="Upravit a poslat znovu">' + ICONS.pencil + '</button>';
+    '<button type="button" class="ma-btn" data-ma="edit" title="Upravit a poslat znovu">' + ICONS.pencil + '</button>' +
+    '<button type="button" class="ma-btn" data-ma="branch" title="Větvit odtud (nová konverzace)">' + ICONS.branch + '</button>';
   wrap.appendChild(act);
   return wrap;
+}
+
+function provLabel(name) {
+  const d = document.createElement("div");
+  d.className = "prov-label";
+  d.textContent = name;
+  return d;
 }
 
 function assistantEl() {
   const el = document.createElement("div");
   el.className = "msg assistant";
   el.innerHTML = '<div class="avatar">' + ICONS.logo + '</div><div class="body"></div>' +
-    '<div class="msg-actions"><button type="button" class="ma-btn" data-ma="copy" title="Kopírovat odpověď">' + ICONS.copy + '<span>Kopírovat</span></button></div>';
+    '<div class="msg-actions"><button type="button" class="ma-btn" data-ma="copy" title="Kopírovat odpověď">' + ICONS.copy + '<span>Kopírovat</span></button>' +
+    '<button type="button" class="ma-btn" data-ma="review" title="Nechat zkontrolovat jiným modelem">' + ICONS.swap + '<span>Recenze</span></button></div>';
   return { el, body: el.querySelector(".body") };
 }
 
@@ -1508,6 +1558,8 @@ async function copyText(text) {
 async function onMsgAction(btn) {
   const msg = btn.closest(".msg");
   if (!msg) return;
+  if (btn.dataset.ma === "branch") { branchFrom(msg, false); return; }
+  if (btn.dataset.ma === "review") { reviewLast(); return; }
   if (btn.dataset.ma === "edit") {
     if (state.run) { showToast("Počkejte, až Claude dokončí práci."); return; }
     $("input").value = msg._text || "";
@@ -2538,6 +2590,7 @@ function renderTranscript(data) {
     if (it.t === "user") { group = null; box.appendChild(userEl(it.text, it.images)); continue; }
     if (it.t === "note") { group = null; box.appendChild(noteEl(it.text)); continue; }
     if (!group) { group = assistantEl(); box.appendChild(group.el); }
+    if (it.t === "text" && it.provider && group.prov !== it.provider) { group.prov = it.provider; group.body.appendChild(provLabel(PROV_NAMES[it.provider] || it.provider)); }
     if (it.t === "text") group.body.appendChild(textEl(it.text));
     else if (it.t === "thinking") group.body.appendChild(thinkingEl(it.text));
     else if (it.t === "tool") group.body.appendChild(toolEl(it));
@@ -2841,7 +2894,11 @@ function createLive(cur) {
     if (isShown(cur)) setStatus(t);
   };
   live.ensureGroup = () => {
-    if (!live.group) { live.group = assistantEl(); box.appendChild(live.group.el); }
+    if (!live.group) {
+      live.group = assistantEl();
+      box.appendChild(live.group.el);
+      if (live.provLabel) live.group.body.appendChild(provLabel(live.provLabel));
+    }
     return live.group;
   };
   live.render = () => {
@@ -2924,6 +2981,29 @@ function handleToolResults(msg, live) {
   live.setStatus("Claude pracuje");
 }
 
+function offerSwitch(live) {
+  const run = live.run;
+  if (!run || !run.text || !state.providers) return;
+  const row = document.createElement("div");
+  row.className = "switch-row";
+  for (const p of ["claude", "codex", "opencode"]) {
+    if (p === run.provider || !state.providers[p]) continue;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn";
+    b.textContent = "Pokračovat v " + PROV_NAMES[p];
+    b.addEventListener("click", () => {
+      row.remove();
+      $("provider").value = p;
+      localStorage.setItem("cg-provider", p);
+      syncPicker();
+      send(run.text, [], live.cur);
+    });
+    row.appendChild(b);
+  }
+  if (row.children.length) { live.group = null; boxFor(live.cur).appendChild(row); live.scroll(); }
+}
+
 function handleEvent(ev, live) {
   switch (ev.type) {
     case "gui":
@@ -2934,6 +3014,7 @@ function handleEvent(ev, live) {
       break;
     case "system":
       if (ev.subtype === "init" && ev.session_id) {
+        live.provLabel = ev.model === "Codex" || ev.model === "OpenCode" ? ev.model : "";
         adoptSession(ev.session_id, live.cur);
         loadSessions();
       }
@@ -2958,6 +3039,7 @@ function handleEvent(ev, live) {
           (Array.isArray(ev.errors) && ev.errors.join("\n")) ||
           ("Claude vrátil chybu (" + (ev.subtype || "neznámá") + ").");
         live.note(text, "error");
+        offerSwitch(live);
       } else {
         live.meta(ev);
       }
@@ -3027,6 +3109,230 @@ function drainQueue(cur) {
   send(q.text, q.att || [], q.cur);
 }
 
+
+/* ---------- Nástroje: prompty, KB, export, checkpointy, náhled, větvení, recenze ---------- */
+const toolsDlg = () => $("dlgTools");
+function openTools(title, build, foot) {
+  $("toolsTitle").textContent = title;
+  const body = $("toolsBody"), ft = $("toolsFoot");
+  body.replaceChildren(); ft.replaceChildren();
+  build(body, ft);
+  toolsDlg().hidden = false;
+}
+function closeTools() { toolsDlg().hidden = true; }
+function mkBtn(label, fn, primary) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "btn" + (primary ? " primary" : ""); b.textContent = label;
+  b.addEventListener("click", fn); return b;
+}
+function mkRow(title, sub, actions) {
+  const r = document.createElement("div"); r.className = "cwd-item";
+  const t = document.createElement("div");
+  const n = document.createElement("strong"); n.textContent = title; t.appendChild(n);
+  if (sub) { const sm = document.createElement("div"); sm.style.opacity = ".7"; sm.style.fontSize = "12px"; sm.textContent = sub; t.appendChild(sm); }
+  r.appendChild(t);
+  const a = document.createElement("div"); a.style.display = "flex"; a.style.gap = "6px";
+  for (const x of actions) a.appendChild(x);
+  r.appendChild(a); return r;
+}
+function insertIntoInput(text) {
+  const i = $("input"); i.value = (i.value ? i.value + "\n" : "") + text; autosize(); i.focus();
+}
+
+async function toolPrompts() {
+  let data;
+  try { data = await apiJson("/api/prompts"); } catch (e) { showToast(e.message); return; }
+  let list = (data.items || []).map((x) => ({ title: x.name, text: x.text }));
+  const render = (body, ft) => {
+    body.replaceChildren();
+    for (const [i, pr] of list.entries()) {
+      body.appendChild(mkRow(pr.title, (pr.text || "").slice(0, 90), [
+        mkBtn("Vložit", () => { insertIntoInput(pr.text); closeTools(); }, true),
+        mkBtn("Smazat", async () => { list.splice(i, 1); await apiJson("/api/prompts_save", { method: "POST", body: JSON.stringify({ items: list.map((x) => ({ name: x.title, text: x.text })) }) }); render(body, ft); }),
+      ]));
+    }
+    if (!list.length) body.appendChild(noteEl("Zatím žádné prompty."));
+    ft.replaceChildren(mkBtn("Přidat prompt", () => {
+      body.replaceChildren();
+      const t = document.createElement("input"); t.className = "text-input"; t.placeholder = "Název";
+      const x = document.createElement("textarea"); x.placeholder = "Text promptu";
+      body.append(t, x);
+      ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)), mkBtn("Uložit", async () => {
+        if (!t.value.trim() || !x.value.trim()) return;
+        list.push({ title: t.value.trim(), text: x.value });
+        await apiJson("/api/prompts_save", { method: "POST", body: JSON.stringify({ items: list.map((x) => ({ name: x.title, text: x.text })) }) });
+        render(body, ft);
+      }, true));
+    }), mkBtn("Zavřít", closeTools));
+  };
+  openTools("Knihovna promptů", render);
+}
+
+async function toolKb() {
+  let data;
+  try { data = await apiJson("/api/kb"); } catch (e) { showToast(e.message); return; }
+  const files = (data.items || []).map((n) => ({ name: n }));
+  const sel = new Set(JSON.parse(localStorage.getItem("cg-kb") || "[]"));
+  const render = (body, ft) => {
+    body.replaceChildren();
+    body.appendChild(noteEl("Zaškrtnuté soubory se přidají jako instrukce do nových konverzací."));
+    for (const f of files) {
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = sel.has(f.name);
+      cb.addEventListener("change", () => { cb.checked ? sel.add(f.name) : sel.delete(f.name); localStorage.setItem("cg-kb", JSON.stringify([...sel])); });
+      body.appendChild(mkRow(f.name, "", [cb, mkBtn("Upravit", () => edit(f.name, body, ft)),
+        mkBtn("Smazat", async () => { await apiJson("/api/kb_delete", { method: "POST", body: JSON.stringify({ name: f.name }) }); files.splice(files.indexOf(f), 1); sel.delete(f.name); localStorage.setItem("cg-kb", JSON.stringify([...sel])); render(body, ft); })]));
+    }
+    ft.replaceChildren(mkBtn("Nový soubor", () => edit("", body, ft)), mkBtn("Zavřít", closeTools, true));
+  };
+  const edit = async (name, body, ft) => {
+    let content = "";
+    if (name) { try { content = (await apiJson("/api/kb_file?name=" + encodeURIComponent(name))).text || ""; } catch (e) { showToast(e.message); } }
+    body.replaceChildren();
+    const n = document.createElement("input"); n.className = "text-input"; n.placeholder = "nazev.md"; n.value = name;
+    const x = document.createElement("textarea"); x.value = content;
+    body.append(n, x);
+    ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)), mkBtn("Uložit", async () => {
+      const nm = n.value.trim(); if (!nm) return;
+      await apiJson("/api/kb_save", { method: "POST", body: JSON.stringify({ name: nm, text: x.value }) });
+      if (!files.some((f) => f.name === nm)) files.push({ name: nm, size: x.value.length });
+      render(body, ft);
+    }, true));
+  };
+  openTools("Znalostní báze", render);
+}
+
+async function toolCheckpoints() {
+  const cur = state.current;
+  if (!cur || !cur.id) { showToast("Nejdřív začněte konverzaci."); return; }
+  let data;
+  try { data = await apiJson("/api/checkpoints?id=" + encodeURIComponent(cur.id)); } catch (e) { showToast(e.message); return; }
+  openTools("Kontrolní body", (body, ft) => {
+    const items = data.items || [];
+    if (!items.length) body.appendChild(noteEl("Zatím žádné kontrolní body. Vytvoří se před každým během v git repozitáři."));
+    for (const c of items.slice().reverse()) {
+      body.appendChild(mkRow((c.prompt || "").slice(0, 70) || c.ref.slice(0, 8), new Date((c.ts || 0) * 1000).toLocaleString("cs-CZ"), [
+        mkBtn("Změny", async () => {
+          const d = await apiJson("/api/cp_diff?id=" + encodeURIComponent(cur.id) + "&ref=" + encodeURIComponent(c.ref));
+          body.replaceChildren(); const pre = document.createElement("pre"); pre.style.whiteSpace = "pre-wrap"; pre.textContent = d.text || "(beze změn)"; body.appendChild(pre);
+        }),
+        mkBtn("Obnovit", async () => {
+          if (!confirm("Vrátit pracovní složku do stavu před tímto během?")) return;
+          try { await apiJson("/api/cp_restore", { method: "POST", body: JSON.stringify({ id: cur.id, ref: c.ref }) }); showToast("Obnoveno."); closeTools(); } catch (e) { showToast(e.message); }
+        }, true),
+      ]));
+    }
+    ft.replaceChildren(mkBtn("Zavřít", closeTools, true));
+  });
+}
+
+async function toolExport() {
+  const cur = state.current;
+  if (!cur) { showToast("Žádná konverzace."); return; }
+  openTools("Export konverzace", (body, ft) => {
+    body.appendChild(noteEl("Soubor se uloží do složky Stažené."));
+    for (const fmt of ["md", "html", "pdf"]) {
+      ft.appendChild(mkBtn(fmt.toUpperCase(), async () => {
+        const parts = [];
+        for (const m of $("messages").querySelectorAll(".msg")) {
+          if (m.classList.contains("user")) parts.push({ r: "user", t: m._text || "", h: "" });
+          else {
+            const mds = [...m.querySelectorAll(".md")];
+            parts.push({ r: "assistant", t: mds.map((x) => x.innerText.trim()).join("\n\n"), h: mds.map((x) => x.innerHTML).join("") });
+          }
+        }
+        let content;
+        if (fmt === "md") content = "# " + (cur.title || "Konverzace") + "\n\n" + parts.map((x) => (x.r === "user" ? "## Uživatel\n\n" : "## Asistent\n\n") + x.t).join("\n\n");
+        else content = "<!doctype html><html><head><meta charset=\"utf-8\"><title>" + escapeHtml(cur.title || "Konverzace") + "</title><style>body{font-family:sans-serif;max-width:800px;margin:2em auto;line-height:1.5}pre{background:#f4f4f4;padding:8px;overflow:auto}.u{background:#eef;padding:8px 12px;border-radius:8px;margin:1em 0}</style></head><body><h1>" + escapeHtml(cur.title || "Konverzace") + "</h1>" + parts.map((x) => x.r === "user" ? '<div class="u">' + escapeHtml(x.t).replace(/\n/g, "<br>") + "</div>" : "<div>" + x.h + "</div>").join("") + "</body></html>";
+        try {
+          const r = await apiJson("/api/export", { method: "POST", body: JSON.stringify({ name: (cur.title || "konverzace").slice(0, 60), fmt, content }) });
+          showToast("Uloženo: " + (r.path || "")); closeTools();
+        } catch (e) { showToast(e.message); }
+      }, fmt === "md"));
+    }
+  });
+}
+
+async function toolPreview() {
+  let ports = [];
+  try { ports = (await apiJson("/api/ports")).items || []; } catch (e) { /* nic */ }
+  openTools("Náhled webu / aplikace", (body, ft) => {
+    const inp = document.createElement("input"); inp.className = "text-input"; inp.placeholder = "http://localhost:3000 nebo /cesta/k/index.html";
+    body.appendChild(inp);
+    const go = async (u) => {
+      u = (u || inp.value).trim(); if (!u) return;
+      try { await apiJson("/api/preview", { method: "POST", body: JSON.stringify({ url: u }) }); closeTools(); } catch (e) { showToast(e.message); }
+    };
+    for (const pt of ports) body.appendChild(mkRow("localhost:" + (pt.port || pt), pt.proc || "", [mkBtn("Otevřít", () => go("http://localhost:" + (pt.port || pt)), true)]));
+    ft.replaceChildren(mkBtn("Zavřít", closeTools), mkBtn("Otevřít náhled", () => go(), true));
+    setTimeout(() => inp.focus(), 0);
+  });
+}
+
+function toolCompact() {
+  if (state.run) { showToast("Počkejte na dokončení práce."); return; }
+  send("/compact");
+}
+
+/* mapování DOM zprávy na řádek přepisu */
+async function lineOf(msg) {
+  const cur = state.current;
+  if (!cur || !cur.id) return null;
+  const data = await apiJson("/api/session?id=" + encodeURIComponent(cur.id));
+  const users = data.items.filter((i) => i.t === "user");
+  const msgs = [...$("messages").querySelectorAll(".msg")];
+  const doms = msgs.filter((m) => m.classList.contains("user"));
+  if (users.length !== doms.length) return null;
+  if (msg.classList.contains("user")) { const u = users[doms.indexOf(msg)]; return u ? u.line : null; }
+  // asistent: řádek posledního prvku před další uživatelskou zprávou
+  const idx = msgs.indexOf(msg);
+  let ui = 0; for (let k = 0; k < idx; k++) if (msgs[k].classList.contains("user")) ui++;
+  const start = ui ? users[ui - 1].line : 0;
+  const next = users[ui] ? users[ui].line : Infinity;
+  let last = null;
+  for (const it of data.items) if (it.line != null && it.line >= start && it.line < next) last = it.line;
+  return last == null ? null : last + 1;
+}
+
+async function branchFrom(msg, edit) {
+  if (state.run) { showToast("Počkejte na dokončení práce."); return; }
+  const cur = state.current;
+  if (!cur || !cur.id) return;
+  let upto;
+  try { upto = await lineOf(msg); } catch (e) { showToast(e.message); return; }
+  if (upto == null) { showToast("Zprávu se nepodařilo přiřadit k přepisu."); return; }
+  const isUser = msg.classList.contains("user");
+  try {
+    const r = await apiJson("/api/branch", { method: "POST", body: JSON.stringify({ id: cur.id, upto, title: (cur.title || "Konverzace") + " (větev)" }) });
+    await loadSessions();
+    await openSession(r.id);
+    if (isUser && edit) { $("input").value = msg._text || ""; autosize(); $("input").focus(); }
+    showToast("Vytvořena nová větev.");
+  } catch (e) { showToast(e.message); }
+}
+
+function reviewLast() {
+  if (state.run) { showToast("Počkejte na dokončení práce."); return; }
+  const cur = $("provider").value || "claude";
+  const order = ["codex", "opencode", "claude"].filter((p) => p !== cur && (p === "claude" || (state.providers && state.providers[p] !== false && !(state.providers[p] && state.providers[p].available === false))));
+  const rev = order[0] || "claude";
+  $("provider").value = rev; $("provider").dispatchEvent(new Event("change"));
+  send("Zkontroluj kriticky svou předchozí odpověď (poslední odpověď asistenta výše): najdi chyby, mezery a rizika a navrhni konkrétní opravy. Buď stručný.");
+}
+
+function initTools() {
+  const pop = $("toolsPop");
+  $("btnTools").addEventListener("click", (e) => { e.stopPropagation(); pop.hidden = !pop.hidden; });
+  document.addEventListener("click", (e) => { if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });
+  pop.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tool]"); if (!b) return;
+    pop.hidden = true;
+    ({ prompts: toolPrompts, kb: toolKb, review: reviewLast, compact: toolCompact, export: toolExport, preview: toolPreview, checkpoints: toolCheckpoints })[b.dataset.tool]();
+  });
+  $("toolsClose").addEventListener("click", closeTools);
+  toolsDlg().addEventListener("click", (e) => { if (e.target === toolsDlg()) closeTools(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !toolsDlg().hidden) closeTools(); });
+}
+
 async function send(queuedText, queuedAtt, target) {
   const input = $("input");
   const text = queuedText !== undefined ? queuedText : input.value.trim();
@@ -3057,7 +3363,7 @@ async function send(queuedText, queuedAtt, target) {
   const live = createLive(cur);
   const controller = new AbortController();
   const chatId = Math.random().toString(36).slice(2);
-  const run = { controller, runId: null, cur, status: "Claude pracuje", stopped: false };
+  const run = { controller, runId: null, cur, status: PROV_NAMES[$("provider").value] + " pracuje", stopped: false, text: fullText, provider: $("provider").value };
   live.run = run;
   state.runs.push(run);
   syncRunUi();
@@ -3081,6 +3387,8 @@ async function send(queuedText, queuedAtt, target) {
           model: $("model").value,
           lean: leanNow,
           effort: $("effort").value,
+          provider: $("provider").value,
+          kb: JSON.parse(localStorage.getItem("cg-kb") || "[]"),
         }),
       }).catch(reject);
     });
@@ -3351,8 +3659,10 @@ async function loadLimits() {
 const MODEL_NAMES = { "": "Výchozí model", opus: "Opus", sonnet: "Sonnet", haiku: "Haiku" };
 const EFFORT_NAMES = { "": "", low: "nízká", medium: "střední", high: "vysoká", xhigh: "velmi vysoká", max: "max" };
 
+const PROV_NAMES = { claude: "Claude", codex: "Codex", opencode: "OpenCode" };
 function syncPicker() {
-  const label = (MODEL_NAMES[$("model").value] || "Model") + (EFFORT_NAMES[$("effort").value] ? " · " + EFFORT_NAMES[$("effort").value] : "");
+  const pv = $("provider").value;
+  const label = pv !== "claude" ? (PROV_NAMES[pv] || pv) : (MODEL_NAMES[$("model").value] || "Model") + (EFFORT_NAMES[$("effort").value] ? " · " + EFFORT_NAMES[$("effort").value] : "");
   $("pickLabel").textContent = label;
   for (const el of $("pop").querySelectorAll("[data-set]")) {
     el.classList.toggle("sel", $(el.dataset.set).value === el.dataset.v);
@@ -3520,6 +3830,7 @@ async function refreshContext() {
 }
 
 function init() {
+  initTools();
   // Ikony
   for (const el of document.querySelectorAll("[data-icon]")) el.innerHTML = ICONS[el.dataset.icon] || "";
   $("btnNew").innerHTML = '<span class="plus">' + ICONS.plus + "</span><span>Nová konverzace</span>";
@@ -3533,6 +3844,14 @@ function init() {
   const savedMode = localStorage.getItem("cg-mode");
   $("mode").value = ["default", "acceptEdits", "auto", "plan", "bypassPermissions"].includes(savedMode) ? savedMode : "acceptEdits";
   $("model").value = localStorage.getItem("cg-model") || "";
+  $("provider").value = ["codex", "opencode"].includes(localStorage.getItem("cg-provider")) ? localStorage.getItem("cg-provider") : "claude";
+  apiJson("/api/providers").then((p) => {
+    state.providers = p;
+    for (const o of $("pop").querySelectorAll('[data-set="provider"]')) {
+      if (!p[o.dataset.v]) { o.disabled = true; o.querySelector("small").textContent = "není nainstalován"; }
+    }
+    if (!p[$("provider").value]) { $("provider").value = "claude"; syncPicker(); }
+  }).catch(() => {});
   const savedEffort = localStorage.getItem("cg-effort");
   $("effort").value = ["low", "medium", "high", "xhigh", "max"].includes(savedEffort) ? savedEffort : "";
   state.sideMode = localStorage.getItem("cg-side") === "projects" ? "projects" : "chats";
@@ -3545,6 +3864,7 @@ function init() {
   // Události
   $("mode").addEventListener("change", updateModeUi);
   $("model").addEventListener("change", () => localStorage.setItem("cg-model", $("model").value));
+  $("provider").addEventListener("change", () => { localStorage.setItem("cg-provider", $("provider").value); syncPicker(); });
   $("mode").addEventListener("change", syncPicker);
   $("env").addEventListener("change", syncPicker);
   $("env").addEventListener("change", () => localStorage.setItem("cg-env", $("env").value));

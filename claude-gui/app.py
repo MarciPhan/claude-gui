@@ -60,7 +60,10 @@ class Window(Adw.ApplicationWindow):
         header.set_title_widget(self.title_label)
         view = Adw.ToolbarView()
         view.add_top_bar(header)
-        view.set_content(self.web)
+        self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, resize_start_child=True, shrink_start_child=False, shrink_end_child=False)
+        self.paned.set_start_child(self.web)
+        self.preview_box = None
+        view.set_content(self.paned)
         self.set_content(view)
 
         self.connect("close-request", self.on_close)
@@ -76,6 +79,39 @@ class Window(Adw.ApplicationWindow):
         self.install_file_drop()
 
     # --- nativní přetažení souborů z Nautilu apod. ---
+
+    def show_preview(self, uri):
+        """Boční nativní panel s náhledem webu nebo aplikace."""
+        if self.preview_box is None:
+            self.preview_web = WebKit.WebView()
+            self.preview_web.set_hexpand(True)
+            self.preview_web.set_vexpand(True)
+            bar = Gtk.Box(spacing=6, margin_start=6, margin_end=6, margin_top=4, margin_bottom=4)
+            self.preview_title = Gtk.Label(label="Náhled", hexpand=True, xalign=0, ellipsize=3)
+            reload_btn = Gtk.Button(icon_name="view-refresh-symbolic")
+            reload_btn.add_css_class("flat")
+            reload_btn.connect("clicked", lambda *_: self.preview_web.reload())
+            ext_btn = Gtk.Button(icon_name="web-browser-symbolic")
+            ext_btn.add_css_class("flat")
+            ext_btn.connect("clicked", lambda *_: Gio.AppInfo.launch_default_for_uri(self.preview_web.get_uri() or "", None))
+            close_btn = Gtk.Button(icon_name="window-close-symbolic")
+            close_btn.add_css_class("flat")
+            close_btn.connect("clicked", lambda *_: self.hide_preview())
+            for w in (self.preview_title, reload_btn, ext_btn, close_btn):
+                bar.append(w)
+            self.preview_web.connect("notify::title", lambda *_: self.preview_title.set_label(self.preview_web.get_title() or self.preview_web.get_uri() or "Náhled"))
+            self.preview_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            self.preview_box.set_size_request(320, -1)
+            self.preview_box.append(bar)
+            self.preview_box.append(self.preview_web)
+        if self.preview_box.get_parent() is None:
+            self.paned.set_end_child(self.preview_box)
+            self.paned.set_position(max(380, int(self.get_width() * 0.5)))
+        self.preview_web.load_uri(uri)
+
+    def hide_preview(self):
+        if self.preview_box is not None and self.preview_box.get_parent() is not None:
+            self.paned.set_end_child(None)
 
     def install_file_drop(self):
         target = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY)
@@ -191,6 +227,14 @@ class Window(Adw.ApplicationWindow):
                 result = {"ok": True, "run_id": run_id}
             elif method == "GET" and url.path == "/api/clip_image":
                 result = self.clip_image()
+            elif method == "POST" and url.path == "/api/preview":
+                target = str((body or {}).get("url") or "").strip()
+                if target.startswith(("/", "~")):
+                    target = Path(target).expanduser().as_uri()
+                elif not target.startswith(("http://", "https://", "file://")):
+                    target = "http://" + target
+                GLib.idle_add(lambda: self.show_preview(target) or False)
+                result = {"ok": True}
             elif method == "GET" and url.path == "/api/pane_html":
                 result = {"html": self.pane_html}
             else:

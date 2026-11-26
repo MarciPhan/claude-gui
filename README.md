@@ -31,6 +31,10 @@ cd claude-gui
 
 Copies the app to `~/.local/share/claude-gui` and adds a "Claude Code" launcher to the application menu (no sudo). Uninstall with `./install.sh --uninstall`. You can also run it without installing: `python3 claude-gui/app.py`.
 
+## Providers and tools
+
+Besides Claude Code the app can talk to the Codex CLI and OpenCode (if installed); pick the provider in the model menu. All providers share one conversation, so you can continue with another one when Claude runs out of tokens. The tools menu (wrench button in the composer) adds a prompt library, a knowledge base, review by a second model, `/compact`, export to Markdown/HTML/PDF, a side preview of a web page or local app, and git checkpoints (restore the working tree from before any run). Hover a message to branch the conversation from it.
+
 ## Data
 
 Conversations are read from `~/.claude/projects` (the same as the CLI). Uploaded attachments live in `~/.local/share/claude-gui-data/uploads` and are deleted after 14 days.

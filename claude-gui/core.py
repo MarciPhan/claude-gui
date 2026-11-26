@@ -28,6 +28,9 @@ from pathlib import Path
 
 
 APP_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(APP_DIR))
+import extras  # noqa: E402
+import providers  # noqa: E402
 INDEX_FILE = APP_DIR / "index.html"
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
 CLAUDE_BIN = shutil.which("claude") or "/usr/bin/claude"
@@ -303,7 +306,7 @@ def load_transcript(path: Path):
     summary = None
     cwd = None
     with open(path, "rb") as f:
-        for raw in f:
+        for lineno, raw in enumerate(f):
             if not any(marker in raw for marker in RELEVANT_MARKERS):
                 continue
             raw = raw.strip()
@@ -347,7 +350,7 @@ def load_transcript(path: Path):
                 text = extract_user_text(obj)
                 images = count_user_images(obj)
                 if text or images:
-                    items.append({"t": "user", "text": text or "", "images": images, "ts": obj.get("timestamp")})
+                    items.append({"t": "user", "text": text or "", "images": images, "ts": obj.get("timestamp"), "line": lineno})
             else:
                 if not isinstance(content, list):
                     continue
@@ -356,12 +359,13 @@ def load_transcript(path: Path):
                         continue
                     bt = block.get("type")
                     if bt == "text" and isinstance(block.get("text"), str) and block["text"].strip():
-                        items.append({"t": "text", "text": block["text"]})
+                        items.append({"t": "text", "line": lineno, "text": block["text"], **({"provider": obj["guiProvider"]} if obj.get("guiProvider") else {})})
                     elif bt == "thinking" and isinstance(block.get("thinking"), str) and block["thinking"].strip():
-                        items.append({"t": "thinking", "text": block["thinking"][:20000]})
+                        items.append({"t": "thinking", "line": lineno, "text": block["thinking"][:20000]})
                     elif bt == "tool_use":
                         item = {
                             "t": "tool",
+                            "line": lineno,
                             "id": block.get("id"),
                             "name": block.get("name") or "nástroj",
                             "summary": tool_summary(block.get("input")),
@@ -633,12 +637,61 @@ def api_call(method, path, query, body):
             if proc:
                 kill_group(proc)
             return {"ok": True, "found": bool(proc)}
+        if path == "/api/cp_restore":
+            res = CHECKPOINTS.restore(str((body or {}).get("id", "")), str((body or {}).get("ref", "")))
+            if res.get("error"):
+                raise ApiError(res["error"])
+            return res
+        if path == "/api/branch":
+            b = body or {}
+            file = find_session_file(str(b.get("id", "")))
+            if not file:
+                raise ApiError("Konverzace nenalezena.")
+            return {"id": extras.branch_session(file, int(b.get("upto", 0)), str(b.get("title") or "Větev")[:80])}
+        if path == "/api/prompts_save":
+            return {"items": LIBRARY.save_prompts((body or {}).get("items") or [])}
+        if path == "/api/kb_save":
+            if not LIBRARY.kb_save((body or {}).get("name"), str((body or {}).get("text", ""))):
+                raise ApiError("Neplatný název dokumentu.")
+            return {"ok": True}
+        if path == "/api/kb_delete":
+            LIBRARY.kb_delete((body or {}).get("name"))
+            return {"ok": True}
+        if path == "/api/export":
+            b = body or {}
+            fmt = b.get("fmt")
+            if fmt not in ("md", "html", "pdf"):
+                raise ApiError("Neplatný formát.")
+            try:
+                return {"path": extras.export_file(str(b.get("name") or ""), fmt, str(b.get("content") or ""))}
+            except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+                raise ApiError(str(exc))
         if path == "/api/limits_refresh":
             return refresh_limits()
         if path == "/api/org_save":
             return save_org(body or {})
         raise ApiError("Neznámý endpoint.")
 
+    if path == "/api/checkpoints":
+        return {"items": CHECKPOINTS.list((query.get("id") or [""])[0])}
+    if path == "/api/cp_diff":
+        d = CHECKPOINTS.diff((query.get("id") or [""])[0], (query.get("ref") or [""])[0])
+        if d is None:
+            raise ApiError("Kontrolní bod nenalezen.")
+        return {"text": d}
+    if path == "/api/prompts":
+        return {"items": LIBRARY.prompts()}
+    if path == "/api/kb":
+        return {"items": LIBRARY.kb_list()}
+    if path == "/api/kb_file":
+        t = LIBRARY.kb_read((query.get("name") or [""])[0])
+        if t is None:
+            raise ApiError("Dokument nenalezen.")
+        return {"text": t}
+    if path == "/api/ports":
+        return {"items": extras.listening_ports()}
+    if path == "/api/providers":
+        return providers.available()
     if path == "/api/sessions":
         return {"sessions": list_sessions()}
     if path == "/api/session":
@@ -872,6 +925,23 @@ def shrink_image(path):
     return p.stat().st_size
 
 
+def _with_checkpoint(emit, cwd, message, sid):
+    """Před během uloží git snapshot a zapíše ho ke konverzaci, jakmile je znám její sid."""
+    ref = extras.snapshot(cwd)
+    if not ref:
+        return emit
+    state = {"sid": sid, "ref": ref}
+
+    def wrapped(ev):
+        if ev.get("type") == "system" and ev.get("subtype") == "init" and ev.get("session_id"):
+            state["sid"] = ev["session_id"]
+        if state["ref"] and state["sid"]:
+            extras.record_checkpoint(CHECKPOINTS, state["sid"], cwd, message, state["ref"])
+            state["ref"] = None
+        emit(ev)
+    return wrapped
+
+
 def start_chat(body, emit):
     """Spustí `claude -p`; události (dict) posílá přes emit(). Vrací run_id."""
     message = body.get("message")
@@ -893,6 +963,18 @@ def start_chat(body, emit):
     model = body.get("model") or ""
     if model and (not isinstance(model, str) or not MODEL_RE.match(model)):
         raise ApiError("Neplatný název modelu.")
+    prov = body.get("provider") or "claude"
+    ephemeral = bool(body.get("ephemeral"))
+    if not ephemeral:
+        emit = _with_checkpoint(emit, cwd, message, sid)
+    if prov in providers.CLI:
+        ctx = {"projects_dir": PROJECTS_DIR, "find_file": lambda s: find_session_file(s) if s else None,
+               "transcript": load_transcript, "store": PROVIDER_STORE,
+               "register": lambda rid, p: RUNS.__setitem__(rid, p), "unregister": lambda rid: RUNS.pop(rid, None)}
+        try:
+            return providers.start_chat(prov, message, cwd, mode, sid, ctx, emit, ephemeral)
+        except (ValueError, OSError) as exc:
+            raise ApiError(str(exc))
 
     inline = []
     for ap in attachments:
@@ -908,12 +990,18 @@ def start_chat(body, emit):
     if body.get("lean", True) is not False:
         cmd += LEAN_FLAGS
     cmd += ["--append-system-prompt", GUI_HINT]
+    if not sid:
+        kb = LIBRARY.kb_prompt(body.get("kb") if isinstance(body.get("kb"), list) else [])
+        if kb:
+            cmd += ["--append-system-prompt", kb]
+    if ephemeral:
+        cmd += ["--no-session-persistence"]
     effort = body.get("effort") or ""
     if effort and effort not in EFFORTS:
         raise ApiError("Neplatná úroveň přemýšlení.")
     if attachments:
         cmd += ["--add-dir", str(uploads_dir())]
-    if sid:
+    if sid and not ephemeral:
         cmd += ["--resume", sid]
     if model:
         cmd += ["--model", model]
@@ -1002,6 +1090,9 @@ def shutdown_all():
 
 DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "claude-gui-data"
 LIMITS_FILE = DATA_DIR / "limits.json"
+PROVIDER_STORE = providers.Store(DATA_DIR / "provider_sessions.json")
+CHECKPOINTS = extras.Checkpoints(DATA_DIR / "checkpoints.json")
+LIBRARY = extras.Library(DATA_DIR)
 ORG_FILE = DATA_DIR / "organize.json"
 _limits = {"five_hour": None, "seven_day": None, "ts": 0}
 _limits_lock = threading.Lock()
