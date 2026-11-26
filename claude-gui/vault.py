@@ -113,6 +113,44 @@ class Vault:
             self._key = _kdf(new, self._salt, **SCRYPT)
             self._write()
 
+    # --- záznam použití (šifrovaný stejným klíčem, čitelný jen po odemknutí) ---
+    @property
+    def log_path(self):
+        return self.path.with_suffix(".log")
+
+    def log_append(self, rec):
+        with self.lock_:
+            self._need()
+            nonce = os.urandom(12)
+            ct = AESGCM(self._key).encrypt(nonce, json.dumps(rec, ensure_ascii=False).encode(), AAD + b"-log")
+            fd = os.open(self.log_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+            with os.fdopen(fd, "a") as f:
+                f.write(_b64(nonce + ct) + "\n")
+
+    def log_read(self, limit=200):
+        with self.lock_:
+            self._need()
+            try:
+                lines = self.log_path.read_text("utf-8").splitlines()[-limit:]
+            except OSError:
+                return []
+            out = []
+            for ln in lines:
+                try:
+                    raw = base64.b64decode(ln)
+                    out.append(json.loads(AESGCM(self._key).decrypt(raw[:12], raw[12:], AAD + b"-log")))
+                except (InvalidTag, ValueError):
+                    continue
+            return out[::-1]
+
+    def log_clear(self):
+        with self.lock_:
+            self._need()
+            try:
+                self.log_path.unlink()
+            except OSError:
+                pass
+
     # --- položky ---
     def list(self):
         """Pro UI: bez hesel (`has_secret` říká, jestli nějaké je)."""

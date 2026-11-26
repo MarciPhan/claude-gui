@@ -61,7 +61,7 @@ class VaultTest(unittest.TestCase):
             self.assertNotIn(variant, broker.scrub("x " + variant + " y", SECRET))
 
     def _broker(self, answers=None):
-        b = broker.Broker(self.v, Path(self.d) / "log.jsonl")
+        b = broker.Broker(self.v)
         events = []
 
         def emit(ev):
@@ -85,7 +85,23 @@ class VaultTest(unittest.TestCase):
         self.assertIn("zamítl", r["out"])
         ask = [e for e in ev if e.get("subtype") == "vault_ask"][0]
         self.assertNotIn(SECRET, json.dumps(ask))
-        self.assertNotIn(SECRET, (Path(self.d) / "log.jsonl").read_text())
+        self.assertNotIn(SECRET, (Path(self.d) / "v.log").read_text())
+        rec = self.v.log_read()[0]
+        self.assertEqual((rec["decision"], rec["name"], rec["ok"]), ("denied", "Web", None))
+        self.assertNotIn(SECRET, json.dumps(self.v.log_read()))
+
+    def test_log_encrypted_and_cleared(self):
+        self.v.log_append({"name": "Web", "detail": "ftp: ls /tajna-slozka"})
+        raw = (Path(self.d) / "v.log").read_bytes()
+        self.assertNotIn(b"tajna-slozka", raw)
+        self.assertEqual(oct((Path(self.d) / "v.log").stat().st_mode & 0o777), "0o600")
+        self.v.lock()
+        with self.assertRaises(vault.VaultError):
+            self.v.log_read()
+        self.v.unlock(PW)
+        self.assertEqual(self.v.log_read()[0]["detail"], "ftp: ls /tajna-slozka")
+        self.v.log_clear()
+        self.assertEqual(self.v.log_read(), [])
 
     def test_mode_off_hidden(self):
         self.v.save({"id": self.id, "name": "Web", "kind": "ftp", "host": "h", "mode": "off"})

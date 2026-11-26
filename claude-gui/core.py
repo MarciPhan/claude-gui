@@ -715,6 +715,9 @@ def api_call(method, path, query, body):
         if path == "/api/vault_delete":
             _vault_call(VAULT.delete, str((body or {}).get("id", "")))
             return {"ok": True}
+        if path == "/api/vault_log_clear":
+            _vault_call(VAULT.log_clear)
+            return {"ok": True}
         if path == "/api/vault_answer":
             b = body or {}
             return {"ok": BROKER.answer(str(b.get("id", "")), bool(b.get("allow")))}
@@ -753,11 +756,7 @@ def api_call(method, path, query, body):
         un = VAULT.unlocked()
         return {"exists": VAULT.exists(), "unlocked": un, "items": VAULT.list() if un else []}
     if path == "/api/vault_log":
-        try:
-            rows = BROKER.log_path.read_text("utf-8").splitlines()[-40:]
-        except OSError:
-            rows = []
-        return {"items": [json.loads(r) for r in rows if r.startswith("{")][::-1]}
+        return {"items": _vault_call(VAULT.log_read, 200)}
     if path == "/api/ports":
         return {"items": extras.listening_ports()}
     if path == "/api/providers":
@@ -1167,7 +1166,7 @@ LIMITS_FILE = DATA_DIR / "limits.json"
 PROVIDER_STORE = providers.Store(DATA_DIR / "provider_sessions.json")
 CHECKPOINTS = extras.Checkpoints(DATA_DIR / "checkpoints.json")
 VAULT = vault.Vault(DATA_DIR / "vault.enc")
-BROKER = broker.Broker(VAULT, DATA_DIR / "vault-log.jsonl")
+BROKER = broker.Broker(VAULT)
 LIBRARY = extras.Library(DATA_DIR)
 ORG_FILE = DATA_DIR / "organize.json"
 _limits = {"five_hour": None, "seven_day": None, "ts": 0}

@@ -45,9 +45,8 @@ def scrub(text, *secrets_):
 
 
 class Broker:
-    def __init__(self, vault, log_path):
+    def __init__(self, vault):
         self.vault = vault
-        self.log_path = Path(log_path)
         self.tokens = {}      # token -> {"emit","cwd","exp"}
         self.pending = {}     # id -> {"ev","allow"}
         self.lock = threading.Lock()
@@ -157,9 +156,15 @@ class Broker:
         desc = f"{op}: " + " ".join(args)
         sec = entry.get("secret", "")
         desc = scrub(desc, sec)[:500]
-        if entry["mode"] == "ask" and not self._ask(ctx, entry["name"], desc):
-            self._log(entry["name"], op, desc, False)
-            return {"ok": False, "out": "Uživatel operaci zamítl."}
+        decision = "auto"
+        if entry["mode"] == "ask":
+            answer = self._ask(ctx, entry["name"], desc)
+            if answer is not True:
+                decision = "timeout" if answer is None else "denied"
+                self._log(ctx, entry["name"], op, desc, decision, None, 0, "")
+                return {"ok": False, "out": "Uživatel operaci zamítl." if answer is False else "Uživatel včas neodpověděl, operace se neprovedla."}
+            decision = "user"
+        t0 = time.time()
         try:
             out = {"ftp": self._ftp, "ssh": self._ssh, "http": self._http}[op](entry, args, ctx["cwd"])
             ok = True
@@ -168,7 +173,7 @@ class Broker:
         out = scrub(str(out), sec)
         if len(out) > OUT_LIMIT:
             out = out[:OUT_LIMIT] + "\n[výstup zkrácen]"
-        self._log(entry["name"], op, desc, True, ok)
+        self._log(ctx, entry["name"], op, desc, decision, ok, int((time.time() - t0) * 1000), out)
         return {"ok": ok, "out": out}
 
     def _list(self, ctx):
@@ -199,20 +204,17 @@ class Broker:
             self.pending[rid] = p
         try:
             ctx["emit"]({"type": "gui", "subtype": "vault_ask", "id": rid, "name": name, "detail": desc})
-            p["ev"].wait(ASK_TIMEOUT)
-            return p["allow"]
+            return p["allow"] if p["ev"].wait(ASK_TIMEOUT) else None
         finally:
             with self.lock:
                 self.pending.pop(rid, None)
 
-    def _log(self, name, op, desc, allowed, ok=None):
+    def _log(self, ctx, name, op, desc, decision, ok, ms, out):
+        """Šifrovaný záznam použití; výstup je zkrácený a už očištěný od hesla."""
         try:
-            self.log_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"ts": int(time.time()), "name": name, "op": op, "detail": desc, "allowed": allowed, "ok": ok},
-                                   ensure_ascii=False) + "\n")
-            os.chmod(self.log_path, 0o600)
-        except OSError:
+            self.vault.log_append({"ts": int(time.time()), "name": name, "op": op, "detail": desc, "decision": decision,
+                                   "ok": ok, "ms": ms, "cwd": ctx.get("cwd", ""), "summary": out.strip().split("\n")[0][:160]})
+        except Exception:  # noqa: BLE001 – záznam nesmí shodit operaci
             pass
 
     # --- operace ---

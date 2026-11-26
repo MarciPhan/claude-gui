@@ -224,9 +224,21 @@ async function toolVault() {
     body.replaceChildren();
     let rows = [];
     try { rows = (await apiJson("/api/vault_log")).items; } catch (e) { showToast(e.message); }
+    body.appendChild(noteEl("Záznam je šifrovaný a vidíte ho jen po odemknutí. Hesla v něm nejsou."));
     if (!rows.length) body.appendChild(noteEl("Zatím žádné použití."));
-    for (const r of rows) body.appendChild(mkRow(r.name + ": " + r.detail, new Date(r.ts * 1000).toLocaleString("cs-CZ") + " | " + (r.allowed ? (r.ok === false ? "selhalo" : "provedeno") : "zamítnuto"), []));
-    ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)), mkBtn("Zavřít", closeTools, true));
+    const DEC = { user: "potvrzeno vámi", auto: "bez ptaní", denied: "zamítnuto", timeout: "bez odpovědi" };
+    for (const r of rows) {
+      const res = r.ok === null ? "neprovedeno" : (r.ok ? "provedeno" : "selhalo");
+      body.appendChild(mkRow(r.name + ": " + r.detail,
+        new Date(r.ts * 1000).toLocaleString("cs-CZ") + " | " + (DEC[r.decision] || r.decision) + " | " + res + (r.ms ? " | " + r.ms + " ms" : "") +
+        (r.cwd ? " | " + r.cwd : "") + (r.summary ? "\n" + r.summary : ""), []));
+    }
+    ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)),
+      mkBtn("Vymazat historii", async () => {
+        if (!confirm("Vymazat celý záznam použití?")) return;
+        await apiJson("/api/vault_log_clear", { method: "POST", body: "{}" }); history(body, ft);
+      }),
+      mkBtn("Zavřít", closeTools, true));
   };
 
   const form = (it, body, ft) => {
