@@ -8,6 +8,9 @@ Funkce: více konverzací najednou, historie a pokračování (`--resume`), slo�
 
 Úspora tokenů: velké obrázky se zmenší (delší strana 1400 px) a obrázky ≤ 5 MB se posílají přímo ve zprávě; krátký systémový pokyn.
 
+<p align="center"><img src="docs/screenshot.png" alt="Claude GUI s odpovědí Codexu a nabídkou nástrojů" width="900"></p>
+<p align="center"><img src="docs/screenshot-tools.png" alt="Claude GUI s odpovědí Codexu a nabídkou nástrojů" width="900"></p>
+
 ## Požadavky
 
 - nainstalovaný a přihlášený [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) (`claude` v PATH)

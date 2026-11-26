@@ -8,6 +8,9 @@ Features: several conversations at once, history and resume (`--resume`), folder
 
 Token saving: large images are downscaled (longest side 1400 px), images up to 5 MB are sent inline in the message, and the system hint is short.
 
+<p align="center"><img src="docs/screenshot.png" alt="Claude GUI with Codex answer and tools menu" width="900"></p>
+<p align="center"><img src="docs/screenshot-tools.png" alt="Claude GUI with Codex answer and tools menu" width="900"></p>
+
 ## Requirements
 
 - installed and logged-in [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) (`claude` in PATH)
