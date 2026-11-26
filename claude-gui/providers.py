@@ -39,7 +39,7 @@ def available():
     return {"claude": True, "codex": bool(which("codex")), "opencode": bool(which("opencode"))}
 
 
-def _cmd(prov, text, cwd, readonly, psid):
+def _cmd(prov, text, cwd, readonly, psid, auto=False):
     ro = "read-only" if readonly else "workspace-write"
     if prov == "codex":
         if psid:
@@ -49,8 +49,10 @@ def _cmd(prov, text, cwd, readonly, psid):
     cmd = [which("opencode"), "run", "--format", "json", "--dir", cwd]
     if psid:
         cmd += ["-s", psid]
-    if not readonly:
-        cmd += ["--auto"]
+    if readonly:
+        cmd += ["--agent", "plan"]  # bez něj OpenCode v režimu jen ke čtení klidně zapisuje
+    elif auto:
+        cmd += ["--auto"]  # schvaluje i vše, co by jinak vyžadovalo potvrzení: jen v režimu bez oprávnění
     return cmd + ["--", text], None
 
 
@@ -168,11 +170,13 @@ def start_chat(prov, message, cwd, mode, sid, ctx, emit, ephemeral=False):
             d.mkdir(parents=True, exist_ok=True)
         path = d / f"{sid}.jsonl"
     psid = "" if ephemeral else ctx["store"].get(sid, prov)
+    if psid and not re.fullmatch(r"[A-Za-z0-9][\w.\-]{0,127}", psid):
+        psid = ""  # id relace míří do argumentů příkazu, neplatné zahodíme
     payload = message
     if not psid and not new and not ephemeral:
         payload = handoff_text(ctx["transcript"](path)["items"]) + message
     readonly = mode in ("default", "plan")
-    cmd, stdin_text = _cmd(prov, payload, cwd, readonly, psid)
+    cmd, stdin_text = _cmd(prov, payload, cwd, readonly, psid, auto=mode in ("auto", "bypassPermissions"))
     proc = subprocess.Popen(cmd, cwd=cwd, stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
     run_id = uuid.uuid4().hex[:16]

@@ -188,6 +188,10 @@ def downloads_dir():
     return Path.home()
 
 
+_EXPORT_CSP = ('<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '
+               'style-src \'unsafe-inline\'; img-src data:">')
+
+
 def export_file(name, fmt, content):
     name = re.sub(r"[^\w\-. ]+", "-", name or "konverzace", flags=re.U).strip("-. ")[:60] or "konverzace"
     dst = downloads_dir() / f"{name}.{fmt}"
@@ -195,11 +199,14 @@ def export_file(name, fmt, content):
     while dst.exists():
         n += 1
         dst = dst.with_name(f"{name}-{n}.{fmt}")
+    if fmt in ("html", "pdf"):
+        # export nesmí spouštět skripty ani sahat na síť (PDF se vykresluje v prohlížeči)
+        content = content.replace("<head>", "<head>" + _EXPORT_CSP, 1) if "<head>" in content else _EXPORT_CSP + content
     if fmt == "pdf":
         with tempfile.TemporaryDirectory() as td:
             src = os.path.join(td, "in.html")
             Path(src).write_text(content, "utf-8")
-            subprocess.run(["google-chrome", "--headless=new", "--no-sandbox", "--disable-gpu", "--no-pdf-header-footer",
+            subprocess.run(["google-chrome", "--headless=new", "--disable-gpu", "--no-pdf-header-footer",
                             "--user-data-dir=" + os.path.join(td, "p"), "--print-to-pdf=" + str(dst), "file://" + src],
                            capture_output=True, timeout=60)
         if not dst.exists():

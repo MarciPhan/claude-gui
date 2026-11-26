@@ -83,7 +83,7 @@ class Window(Adw.ApplicationWindow):
     def show_preview(self, uri):
         """Boční nativní panel s náhledem webu nebo aplikace."""
         if self.preview_box is None:
-            self.preview_web = WebKit.WebView()
+            self.preview_web = WebKit.WebView(network_session=WebKit.NetworkSession.new_ephemeral())  # bez sdílených cookies a úložiště
             self.preview_web.set_hexpand(True)
             self.preview_web.set_vexpand(True)
             bar = Gtk.Box(spacing=6, margin_start=6, margin_end=6, margin_top=4, margin_bottom=4)
@@ -231,8 +231,10 @@ class Window(Adw.ApplicationWindow):
                 target = str((body or {}).get("url") or "").strip()
                 if target.startswith(("/", "~")):
                     target = Path(target).expanduser().as_uri()
-                elif not target.startswith(("http://", "https://", "file://")):
+                elif "://" not in target:
                     target = "http://" + target
+                if urlparse(target).scheme not in ("http", "https", "file"):
+                    raise core.ApiError("Náhled podporuje jen http, https a lokální soubory.")
                 GLib.idle_add(lambda: self.show_preview(target) or False)
                 result = {"ok": True}
             elif method == "GET" and url.path == "/api/pane_html":
