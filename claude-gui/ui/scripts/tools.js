@@ -265,6 +265,7 @@ function initTools() {
     pop.hidden = true;
     ({ prompts: toolPrompts, kb: toolKb, review: reviewLast, compact: toolCompact, export: toolExport, preview: toolPreview, checkpoints: toolCheckpoints, vault: toolVault })[b.dataset.tool]();
   });
+  $("tabVault").addEventListener("click", () => { closeSidebar(); toolVault(); });
   $("toolsClose").addEventListener("click", closeTools);
   toolsDlg().addEventListener("click", (e) => { if (e.target === toolsDlg()) closeTools(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !toolsDlg().hidden) closeTools(); });

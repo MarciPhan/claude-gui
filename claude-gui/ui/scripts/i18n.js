@@ -93,6 +93,8 @@
     "Heslo (prázdné = beze změny)": "Password (empty = unchanged)",
     "Poznámka pro AI (volitelné)": "Note for the AI (optional)",
     "Dát k dispozici AI (jako proměnné prostředí)": "Make available to the AI (as environment variables)",
+    "Přístupy": "Credentials",
+    "Přístupy k serverům (FTP, SSH…), hesla v klíčence systému": "Server credentials (FTP, SSH…), passwords in the system keyring",
     "Nová konverzace": "New conversation", "Zavřít": "Close", "Pracovní složka": "Working folder",
     "Claude poběží v této složce. Vyberte některou z dříve použitých, nebo zadejte cestu (funguje i ~).":
       "Claude will run in this folder. Pick one you used before or type a path (~ works too).",
