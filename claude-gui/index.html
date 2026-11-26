@@ -766,6 +766,12 @@ audio.media-audio { display: block; width: min(100%, 440px); }
 video.media-video { display: block; max-width: min(100%, 640px); max-height: 420px; border-radius: 12px; background: #000; }
 .tool.media-only > pre { display: none; }
 .tool .media { margin: 6px 8px 4px; }
+
+/* ---------- v16: nastavení a jazyk ---------- */
+.side-foot { align-items: center; }
+.side-foot .icon-btn { margin-left: auto; margin-right: 4px; width: 28px; height: 28px; }
+.side-foot .icon-btn .ic, .side-foot .icon-btn svg { width: 16px; height: 16px; }
+#dlgSettings .seg { margin: 4px 0 8px; }
 </style>
 </head>
 <body data-view="chat">
@@ -794,6 +800,7 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
     </button>
     <div class="side-foot">
       <span id="countInfo"></span>
+      <button id="btnSettings" class="icon-btn" type="button" data-icon="gear" title="Nastavení" aria-label="Nastavení"></button>
       <button id="btnRefresh" class="link-btn" type="button" title="Znovu načíst seznam"></button>
     </div>
   </aside>
@@ -946,6 +953,22 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
   </div>
 </div>
 
+<div id="dlgSettings" class="modal" hidden>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="dlgSetTitle">
+    <div class="modal-head">
+      <h2 id="dlgSetTitle">Nastavení</h2>
+      <button id="dlgSetClose" class="icon-btn" data-icon="close" title="Zavřít" aria-label="Zavřít"></button>
+    </div>
+    <div class="field-label">Jazyk rozhraní</div>
+    <div id="langSeg" class="seg" role="tablist" aria-label="Jazyk rozhraní">
+      <button type="button" data-lang="auto">Automaticky</button>
+      <button type="button" data-lang="cs" translate="no">Čeština</button>
+      <button type="button" data-lang="en" translate="no">English</button>
+    </div>
+    <div class="field-hint">Automaticky = podle jazyka systému.</div>
+  </div>
+</div>
+
 <div id="menu" class="menu" role="menu" hidden></div>
 <div id="toast" class="toast" hidden></div>
 
@@ -1007,6 +1030,7 @@ const ICONS = {
   list: svg('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6l.01 0M4.5 12l.01 0M4.5 18l.01 0" stroke-width="3"/>'),
   bulb: svg('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>'),
   chevron: svg('<path d="M9 6l6 6-6 6"/>'),
+  gear: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
   refresh: svg('<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/>'),
   expand: svg('<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>'),
   play: svg('<circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z" fill="currentColor" stroke="none"/>'),
@@ -1038,6 +1062,8 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+const LOC = () => (document.documentElement.lang === "en" ? "en-GB" : "cs-CZ");
 
 function plural(n, one, few, many) {
   if (n === 1) return one;
@@ -1532,7 +1558,7 @@ function niceTicks(min, max, count) {
   return t;
 }
 
-const fmtTick = (v) => Number(v.toPrecision(6)).toLocaleString("cs-CZ", { maximumFractionDigits: 6 });
+const fmtTick = (v) => Number(v.toPrecision(6)).toLocaleString(LOC(), { maximumFractionDigits: 6 });
 
 function buildChart(spec) {
   if (!spec || typeof spec !== "object" || Array.isArray(spec)) throw new Error("neplatná specifikace");
@@ -2108,8 +2134,9 @@ function loadSessions() {
 
 function formatTime(ts, startToday) {
   const d = new Date(ts);
-  if (ts >= startToday) return d.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+  if (ts >= startToday) return d.toLocaleTimeString(LOC(), { hour: "2-digit", minute: "2-digit" });
   const now = new Date();
+  if (document.documentElement.lang === "en") return d.toLocaleDateString("en-GB", d.getFullYear() === now.getFullYear() ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
   if (d.getFullYear() === now.getFullYear()) return d.getDate() + ". " + (d.getMonth() + 1) + ".";
   return d.getDate() + ". " + (d.getMonth() + 1) + ". " + d.getFullYear();
 }
@@ -2592,7 +2619,7 @@ const ATT_MAX = 40 * 1024 * 1024;
 state.att = [];
 
 function fmtSize(n) {
-  return n < 1024 ? n + " B" : n < 1048576 ? Math.round(n / 1024) + " kB" : (n / 1048576).toFixed(1).replace(".", ",") + " MB";
+  return n < 1024 ? n + " B" : n < 1048576 ? Math.round(n / 1024) + " kB" : (n / 1048576).toLocaleString(LOC(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " MB";
 }
 
 function renderAtt() {
@@ -2837,10 +2864,10 @@ function createLive(cur) {
   live.note = (text, kind) => { live.newSeg(); live.group = null; box.appendChild(noteEl(text, kind)); live.scroll(); };
   live.meta = (ev) => {
     const parts = [];
-    if (typeof ev.duration_ms === "number") parts.push("Hotovo za " + (ev.duration_ms / 1000).toLocaleString("cs-CZ", { maximumFractionDigits: 1 }) + " s");
+    if (typeof ev.duration_ms === "number") parts.push("Hotovo za " + (ev.duration_ms / 1000).toLocaleString(LOC(), { maximumFractionDigits: 1 }) + " s");
     if (ev.usage && typeof ev.usage.output_tokens === "number") parts.push("výstup " + fmt(ev.usage.output_tokens) + " tok.");
     if (typeof ev.num_turns === "number") parts.push("počet kroků: " + ev.num_turns);
-    if (typeof ev.total_cost_usd === "number") parts.push("cena " + ev.total_cost_usd.toLocaleString("cs-CZ", { maximumFractionDigits: 4 }) + " USD");
+    if (typeof ev.total_cost_usd === "number") parts.push("cena " + ev.total_cost_usd.toLocaleString(LOC(), { maximumFractionDigits: 4 }) + " USD");
     if (!parts.length) return;
     const d = document.createElement("div");
     d.className = "run-meta";
@@ -3159,11 +3186,11 @@ const RANGE_LABELS = { h5: "posledních 5 hodin", today: "dnes", d7: "posledníc
 function fmt(n) {
   n = Math.round(n || 0);
   if (n < 1000) return String(n);
-  if (n < 1e6) return (n / 1000).toLocaleString("cs-CZ", { maximumFractionDigits: n < 1e4 ? 1 : 0 }) + " tis.";
-  if (n < 1e9) return (n / 1e6).toLocaleString("cs-CZ", { maximumFractionDigits: 2 }) + " mil.";
-  return (n / 1e9).toLocaleString("cs-CZ", { maximumFractionDigits: 2 }) + " mld.";
+  if (n < 1e6) return (n / 1000).toLocaleString(LOC(), { maximumFractionDigits: n < 1e4 ? 1 : 0 }) + " tis.";
+  if (n < 1e9) return (n / 1e6).toLocaleString(LOC(), { maximumFractionDigits: 2 }) + " mil.";
+  return (n / 1e9).toLocaleString(LOC(), { maximumFractionDigits: 2 }) + " mld.";
 }
-const fmtFull = (n) => Math.round(n || 0).toLocaleString("cs-CZ");
+const fmtFull = (n) => Math.round(n || 0).toLocaleString(LOC());
 const shortModel = (m) => String(m || "neznámý").replace(/^claude-/, "");
 
 let paneHtml = null;
@@ -3267,10 +3294,10 @@ function limitHtml(name, longName, w, weekly, ts) {
   const pct = expired ? 0 : Math.min(100, Math.round((w.utilization || 0) * 100));
   const at = new Date(w.resetsAt * 1000);
   const abs = weekly
-    ? at.toLocaleString("cs-CZ", { weekday: "short", hour: "2-digit", minute: "2-digit" })
-    : at.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
-  const full = at.toLocaleString("cs-CZ", { weekday: "long", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
-  const asOf = ts ? new Date(ts * 1000).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }) : "";
+    ? at.toLocaleString(LOC(), { weekday: "short", hour: "2-digit", minute: "2-digit" })
+    : at.toLocaleTimeString(LOC(), { hour: "2-digit", minute: "2-digit" });
+  const full = at.toLocaleString(LOC(), { weekday: "long", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+  const asOf = ts ? new Date(ts * 1000).toLocaleTimeString(LOC(), { hour: "2-digit", minute: "2-digit" }) : "";
   const title = "Využito " + pct + " % " + longName + ". " + (expired ? "Okno se už obnovilo." : "Reset " + full + ".") + (asOf ? " Stav z " + asOf + "." : "");
   const cls = pct >= 90 ? " full" : pct >= 75 ? " high" : "";
   return '<div class="lim' + cls + '" title="' + escapeHtml(title) + '"><div class="lim-top"><span>' + name + '</span><span class="lim-pct">' + pct + ' %</span></div>' +
@@ -3347,14 +3374,14 @@ function niceMax(max) {
 function bucketLabel(t, unit) {
   const d = new Date(t * 1000);
   if (unit === "day") return d.getDate() + ". " + (d.getMonth() + 1) + ".";
-  return d.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(LOC(), { hour: "2-digit", minute: "2-digit" });
 }
 
 function bucketTitle(t, unit, end) {
   const d = new Date(t * 1000);
-  if (unit === "day") return d.toLocaleDateString("cs-CZ", { weekday: "short", day: "numeric", month: "numeric" });
+  if (unit === "day") return d.toLocaleDateString(LOC(), { weekday: "short", day: "numeric", month: "numeric" });
   const to = new Date((end || t + 3600) * 1000);
-  const hm = (x) => x.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+  const hm = (x) => x.toLocaleTimeString(LOC(), { hour: "2-digit", minute: "2-digit" });
   return hm(d) + " až " + hm(to);
 }
 
@@ -3760,6 +3787,280 @@ if (!IS_PANE) {
     }
   }, 1500);
 }
+</script>
+<script nonce="__CSP_NONCE__">
+"use strict";
+/* ======================= Jazyk rozhraní (cs / en) =======================
+   Zdrojové texty jsou česky. V angličtině se překládají za běhu: přesná shoda celého textu
+   nebo (mimo obsah zpráv) shoda frází podle slovníku. Obsah konverzací se nikdy nepřekládá. */
+(() => {
+  const EN = {
+    "Skrýt panel": "Hide panel", "Zobrazení": "View", "Využití": "Usage", "Konverzace": "Conversations", "Projekty": "Projects",
+    "Více konverzací vedle sebe (Ctrl+\\)": "Several conversations side by side (Ctrl+\\)", "Rozdělit": "Split",
+    "Hledat v názvech i textu": "Search titles and text", "Hledat v konverzacích": "Search conversations", "Hledat (Ctrl+K)": "Search (Ctrl+K)",
+    "Otevřít přehled využití": "Open usage overview", "Načítám…": "Loading…", "Znovu načíst seznam": "Reload list",
+    "Zobrazit konverzace": "Show conversations",
+    "Vyčistit kontext (nová konverzace ve stejné složce, stará zůstane v seznamu)": "Clear context (new conversation in the same folder, the old one stays in the list)",
+    "Vyčistit kontext": "Clear context",
+    "Zapnutý režim bypassPermissions: Claude spouští libovolné příkazy a mění či maže soubory bez jakéhokoli potvrzení. Používejte ho jen v izolovaném prostředí, kde vám nevadí ztráta dat.":
+      "bypassPermissions mode is on: Claude runs any command and changes or deletes files without any confirmation. Use it only in an isolated environment where data loss does not matter.",
+    "Claude pracuje": "Claude is working", "Na konec konverzace": "To the end of the conversation",
+    "Napište zprávu pro Claude, nebo sem přetáhněte soubory": "Write a message to Claude, or drop files here",
+    "Zpráva": "Message", "Přiložit soubory nebo obrázky": "Attach files or images", "Přiložit soubory": "Attach files",
+    "Výchozí": "Default", "podle nastavení Claude Code": "per Claude Code settings",
+    "Nejschopnější, na složité úkoly": "Most capable, for complex tasks", "Vyvážený, na každodenní práci": "Balanced, for everyday work",
+    "Nejrychlejší a nejlevnější": "Fastest and cheapest", "Úroveň přemýšlení": "Thinking level",
+    "Nízká": "Low", "Střední": "Medium", "Vysoká": "High", "Velmi vysoká": "Very high", "Pokročilé": "Advanced",
+    "Co smí Claude dělat": "What Claude may do", "Jen číst a plánovat": "Read and plan only", "Číst a upravovat soubory": "Read and edit files",
+    "doporučeno": "recommended", "Automaticky": "Automatic", "rozhoduje klasifikátor": "decided by a classifier",
+    "Zamítat vše riskantní": "Deny anything risky", "Vše bez ptaní": "Allow everything without asking",
+    "nebezpečné, bez jakékoli kontroly": "dangerous, no checks at all", "Rozšíření (MCP servery a skilly)": "Extensions (MCP servers and skills)",
+    "Načíst jednou, pak úsporně": "Load once, then economically", "Nikdy": "Never", "nejméně tokenů": "fewest tokens", "Vždy": "Always",
+    "nejvíc tokenů": "most tokens", "Donačíst při další zprávě": "Reload on next message", "Odeslat": "Send",
+    "Enter odešle, Shift+Enter vloží nový řádek": "Enter sends, Shift+Enter inserts a new line",
+    "Období": "Period", "5 hodin": "5 hours", "Dnes": "Today", "7 dní": "7 days", "30 dní": "30 days", "Přepočítat": "Recalculate",
+    "Nová konverzace": "New conversation", "Zavřít": "Close", "Pracovní složka": "Working folder",
+    "Claude poběží v této složce. Vyberte některou z dříve použitých, nebo zadejte cestu (funguje i ~).":
+      "Claude will run in this folder. Pick one you used before or type a path (~ works too).",
+    "Zrušit": "Cancel", "Začít konverzaci": "Start conversation", "Rozdělené zobrazení": "Split view",
+    "Více konverzací vedle sebe": "Several conversations side by side", "Zpět na jednu konverzaci": "Back to one conversation",
+    "Zavřít (Esc)": "Close (Esc)", "Pustit pro přiložení": "Drop to attach", "obrázky, dokumenty, kód, cokoli": "images, documents, code, anything",
+    "Uložit": "Save", "Nastavení": "Settings", "Jazyk rozhraní": "Interface language",
+    "Automaticky = podle jazyka systému.": "Automatic follows the system language.",
+    "Aplikace musí běžet v nativním okně (app.py).": "The app must run in a native window (app.py).",
+    "úkolů:": "tasks:", "Obrázek SVG": "SVG image", "Graf": "Chart", "Zobrazit kód": "Show code", "Skrýt kód": "Hide code",
+    "Kopírovat": "Copy", "Vykresluji…": "Rendering…", "Náhled": "Preview", "kód": "code",
+    "Kopírovat tabulku (vložitelné do Excelu a Tabulek)": "Copy table (pastes into Excel and Sheets)",
+    "(kliknutím zvětšit)": "(click to enlarge)", "Zvětšit obrázek": "Enlarge image", "(soubor už není k dispozici)": "(file is no longer available)",
+    "obrázek": "image", "obrázky": "images", "obrázků": "images", "Upravit a poslat znovu": "Edit and resend",
+    "Kopírovat odpověď": "Copy response", "Počkejte, až Claude dokončí práci.": "Wait until Claude finishes.",
+    "Není co kopírovat.": "Nothing to copy.", "Zkopírováno": "Copied", "Uvažování": "Reasoning",
+    "neplatná specifikace": "invalid specification", "chybí data (series[].y)": "missing data (series[].y)",
+    "Knihovna vzorců se nenačetla.": "The formula library failed to load.", "kliknutím přehrát": "click to play",
+    "Soubor se nepodařilo načíst:": "Could not load the file:", "Knihovna diagramů se nenačetla.": "The diagram library failed to load.",
+    "Diagram nejde vykreslit (": "Cannot render the diagram (", "), zobrazuji kód.": "), showing the code.",
+    "Tabulka je zkopírovaná, jde vložit do Excelu nebo Tabulek.": "Table copied, you can paste it into Excel or Sheets.",
+    "Náhled HTML": "HTML preview", "Skrýt náhled": "Hide preview", "Celý obsah souboru": "Entire file contents", "Úprava": "Edit",
+    "… dalších": "… more", "řádků není zobrazeno": "lines not shown", "nástroj": "tool", "Probíhá…": "In progress…",
+    "Výstup není k dispozici.": "Output not available.", "Bez výstupu.": "No output.", "(složka neexistuje)": "(folder does not exist)",
+    "Pracovní složka není známá": "Working folder unknown",
+    "Vyberte konverzaci vlevo nebo začněte novou": "Pick a conversation on the left or start a new one",
+    "Odpovědi Claude Code se zobrazují průběžně, k historii se můžete kdykoli vrátit.": "Claude Code's replies appear as they stream; you can return to the history at any time.",
+    "Claude poběží ve složce": "Claude will run in the folder", "Napište první zprávu.": "Write your first message.",
+    "Projdi projekt a shrň, jak je postavený": "Go through the project and summarize how it is built",
+    "Najdi a oprav chyby v tomto kódu": "Find and fix bugs in this code", "Napiš testy pro hlavní funkce": "Write tests for the main functions",
+    "Vysvětli mi, co dělá tento soubor": "Explain what this file does", "Navrhni, co by se dalo zlepšit": "Suggest what could be improved",
+    "konverzací": "conversations", "konverzace": "conversations", "Seznam konverzací se nenačetl:": "Could not load the conversation list:",
+    "Včera": "Yesterday", "Tento týden": "This week", "Starší": "Older", "Další akce": "More actions", "Nic nenalezeno.": "Nothing found.",
+    "Zatím tu nejsou žádné konverzace.": "No conversations here yet.", "Projekty (podle pracovní složky)": "Projects (by working folder)",
+    "Nová konverzace v tomto projektu": "New conversation in this project", "Připnuté": "Pinned", "Složky": "Folders",
+    "Nová složka": "New folder", "Akce složky": "Folder actions", "Prázdná složka": "Empty folder",
+    "Složky se nepodařilo uložit:": "Could not save folders:", "Vytvořit": "Create", "Připnout": "Pin", "Odepnout": "Unpin",
+    "Otevřít vedle sebe": "Open side by side", "Přesunout do složky": "Move to folder", "Nová složka…": "New folder…",
+    "Odebrat ze složky": "Remove from folder", "Přejmenovat": "Rename", "Přejmenovat složku": "Rename folder", "Smazat složku": "Delete folder",
+    "Složka je smazaná, konverzace zůstaly v seznamu.": "Folder deleted, its conversations stayed in the list.",
+    "Prohledávám text konverzací": "Searching conversation text", "Text obsahuje": "Text matches", "Fulltext selhal:": "Full-text search failed:",
+    "Načítám přepis…": "Loading transcript…", "Přepis se nenačetl:": "Could not load the transcript:",
+    "Přepis je zkrácený: zobrazuji posledních": "Transcript is truncated: showing the last", "položek.": "items.",
+    "Konverzace neobsahuje žádné zobrazitelné zprávy.": "The conversation has no displayable messages.",
+    "Načítám složky…": "Loading folders…", "Zatím žádné použité složky. Zadejte cestu ručně.": "No folders used yet. Enter a path manually.",
+    "Složky se nenačetly:": "Could not load folders:", "Zadejte pracovní složku.": "Enter a working folder.",
+    "Tahle složka neexistuje.": "This folder does not exist.", "Zvětšit": "Enlarge", "nahrávám…": "uploading…",
+    "Odebrat přílohu": "Remove attachment", "Soubor nejde přečíst.": "The file cannot be read.",
+    ": soubor je větší než 40 MB.": ": file is larger than 40 MB.", "Nejvýše 20 příloh najednou.": "At most 20 attachments at once.",
+    "Přílohu se nepodařilo nahrát:": "Could not upload the attachment:", "Nejdřív otevřete nebo založte konverzaci.": "Open or start a conversation first.",
+    "Pusťte soubory do konkrétního panelu.": "Drop files into a specific pane.", "Zařadit do fronty": "Add to queue",
+    "Hotovo za": "Done in", "výstup": "output", "počet kroků:": "steps:", "Claude píše": "Claude is writing",
+    "Claude přemýšlí": "Claude is thinking", "Claude používá nástroj": "Claude is using a tool",
+    "Claude skončil s kódem": "Claude exited with code", "Claude vrátil chybu (": "Claude returned an error (", "neznámá": "unknown",
+    "Tyto akce potřebovaly oprávnění a byly zamítnuty:": "These actions needed permission and were denied:",
+    "V neinteraktivním běhu se nelze zeptat, zvolte jiný režim oprávnění.": "A non-interactive run cannot ask; choose another permission mode.",
+    "Ve frontě": "Queued", "příloha": "attachment", "přílohy": "attachments", "příloh": "attachments", "Odebrat z fronty": "Remove from queue",
+    "Konverzace nemá známou pracovní složku.": "The conversation has no known working folder.", "Nedokončeno.": "Unfinished.",
+    "posledních 5 hodin": "the last 5 hours", "posledních 7 dní": "the last 7 days", "posledních 30 dní": "the last 30 days", "neznámý": "unknown",
+    "Panely se nepodařilo vytvořit:": "Could not create panes:", "Všechny panely právě pracují.": "All panes are busy.",
+    "právě se obnovuje": "resetting now", "zatím neznámé": "not known yet", "Okno se už obnovilo.": "The window has already reset.",
+    "Stav z": "As of", "obnoveno": "reset", "reset za": "resets in", "Reset": "Resets", "Týden": "Week",
+    "Zjistit aktuální stav limitů": "Check current limit status", "Výchozí model": "Default model",
+    "nízká": "low", "střední": "medium", "vysoká": "high", "velmi vysoká": "very high",
+    "Nové vstupy": "New inputs", "vstup + zápis do cache": "input + cache write", "Výstup": "Output",
+    "text, kód, uvažování": "text, code, reasoning", "Čtení z cache": "Cache reads", "levné opakované vstupy": "cheap repeated inputs",
+    "Odpovědí": "Replies", "v průměru": "on average", "nových tokenů": "new tokens", "žádná aktivita": "no activity",
+    "V tomto období zatím nic není.": "Nothing in this period yet.", "odp.": "replies", "Průběh,": "Trend,", "Podle modelů": "By model",
+    "nových": "new", "výstup,": "output,", "Nejnáročnější konverzace": "Most demanding conversations", "bez složky": "no folder",
+    "Počítáno z přepisů v ~/.claude/projects, tedy jen konverzace z tohoto počítače. Nové vstupy jsou vstup plus zápis do cache. Čtení z cache je levné a velké, proto je mimo graf. Limity předplatného odtud zjistit nejdou, protože se nezapisují do přepisů.":
+      "Calculated from the transcripts in ~/.claude/projects, so only conversations from this computer. New inputs are input plus cache write. Cache reads are cheap and large, so they are left out of the chart. Subscription limits cannot be determined from here because they are not written to the transcripts.",
+    "tokenů za": "tokens for", "Najeďte na sloupec pro detail.": "Hover over a bar for details.",
+    "Využití se nenačetlo:": "Could not load usage:", "Nedostupné": "Unavailable", "Kontext poslední odpovědi:": "Context of the last reply:",
+    "tokenů, asi": "tokens, about", "(odhad okna)": "(window estimate)",
+    "MCP a skilly se donačtou při další zprávě.": "MCP and skills will reload on the next message.",
+    "Kontext je čistý, stará konverzace zůstala v seznamu.": "Context is clear, the old conversation stayed in the list.",
+    "Nová konverzace (Ctrl+Shift+O)": "New conversation (Ctrl+Shift+O)", "Zastavit": "Stop", "Zastaveno.": "Stopped.",
+    "Zastavuji": "Stopping", "Zastaveno": "Stopped", "Chyba": "Error", "Chyba:": "Error:", "cena": "cost", "dnes": "today",
+    "tis.": "k", "mil.": "M", "mld.": "B", "Panel": "Pane", "Celkem": "Total", "Kontext": "Context", "Obnovit": "Refresh",
+    /* chyby z jádra aplikace */
+    "Neplatné run_id.": "Invalid run_id.", "Neznámý endpoint.": "Unknown endpoint.", "Neplatné session-id.": "Invalid session id.",
+    "Knihovna vzorců není nainstalovaná.": "The formula library is not installed.", "Neznámá knihovna.": "Unknown library.",
+    "Knihovna není nainstalovaná.": "The library is not installed.", "Neplatná příloha.": "Invalid attachment.",
+    "Příloha je poškozená.": "The attachment is corrupted.", "Soubor je větší než 40 MB.": "The file is larger than 40 MB.",
+    "Složky nejde přiložit:": "Folders cannot be attached:", "Neplatná cesta.": "Invalid path.", "Nepodporovaný typ souboru.": "Unsupported file type.",
+    "Soubor je příliš velký pro zobrazení v konverzaci.": "The file is too large to display in the conversation.",
+    "Soubor už neexistuje.": "The file no longer exists.", "Není obrázek.": "Not an image.",
+    "Obrázek je příliš velký pro náhled.": "The image is too large for a preview.", "Neplatné přílohy.": "Invalid attachments.",
+    "Příloha už neexistuje:": "The attachment no longer exists:", "Prázdná zpráva.": "Empty message.", "Chybí pracovní složka.": "Missing working folder.",
+    "Pracovní složka neexistuje:": "Working folder does not exist:", "Neplatný režim oprávnění.": "Invalid permission mode.",
+    "Neplatný název modelu.": "Invalid model name.", "Obrázek je i po zmenšení větší než 5 MB:": "The image is still larger than 5 MB after downscaling:",
+    "Neplatná úroveň přemýšlení.": "Invalid thinking level.", "Nepodařilo se spustit": "Could not start",
+    "Limity se nepodařilo zjistit:": "Could not determine limits:", "Ve schránce není obrázek.": "There is no image in the clipboard."
+  };
+
+  const RULES = [
+    [/Využito (\d+) % (5hodinového|týdenního) limitu\./g, (m, p, w) => p + " % of the " + (w[0] === "5" ? "5-hour" : "weekly") + " limit used."],
+    [/(^|[^\d])1 konverzace/g, (m, pre) => pre + "1 conversation"]
+  ];
+
+  const isWord = (c) => /[\p{L}\p{N}]/u.test(c);
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const BIG = new RegExp(Object.keys(EN).sort((a, b) => b.length - a.length).map((k) =>
+    (isWord(k[0]) ? "(?<![\\p{L}\\p{N}])" : "") + esc(k) + (isWord(k[k.length - 1]) ? "(?![\\p{L}\\p{N}])" : "")).join("|"), "gu");
+
+  function tr(s, exactOnly) {
+    const t = s.trim();
+    if (!t) return s;
+    const lead = s.slice(0, s.indexOf(t)), trail = s.slice(lead.length + t.length);
+    let out = Object.prototype.hasOwnProperty.call(EN, t) ? EN[t] : undefined;
+    if (out === undefined) {
+      if (exactOnly) return s;
+      out = t;
+      for (const [re, f] of RULES) out = out.replace(re, f);
+      out = out.replace(BIG, (m) => EN[m]);
+    }
+    return lead + out + trail;
+  }
+
+  const KEY = "cg-lang";
+  const ATTRS = ["title", "placeholder", "aria-label", "alt"];
+  const SKIP = ".bubble, textarea, input, .item-title, .att-t, #title, .cwd-item, .lb-cap, svg text, script, style";
+  const EXACT = "pre, code, .md, .thinking, .diagram-view";
+  const FULLOK = ".dg-err, .media-play, .msg-actions, .tbl-copy, .code-head";
+  const UIQ = ".code-head, .copy-btn, .tbl-copy, .dg-wait, .dg-err, .dg-toggle, .pv-btn, .media-play, .dg-note";
+  const tRec = new WeakMap(), aRec = new WeakMap();
+  let lang = "cs", touched = false, ready = false;
+
+  function modeOf(el) {
+    if (el.closest(SKIP)) return 0;
+    if (el.closest(FULLOK)) return 2;
+    return el.closest(EXACT) ? 1 : 2;
+  }
+
+  function doText(n) {
+    const p = n.parentElement;
+    if (!p) return;
+    const r = tRec.get(n), cur = n.nodeValue;
+    const src = r && cur === r.out ? r.src : cur;
+    let out = src;
+    if (lang === "en") { const m = modeOf(p); if (m) out = tr(src, m === 1); }
+    if (out !== cur) { tRec.set(n, { src, out }); n.nodeValue = out; } else if (r && cur !== r.out) tRec.delete(n);
+  }
+
+  function doAttrs(el) {
+    let rec = aRec.get(el);
+    for (const a of ATTRS) {
+      const cur = el.getAttribute(a);
+      if (cur === null) continue;
+      const r = rec && rec[a];
+      const src = r && cur === r.out ? r.src : cur;
+      const out = lang === "en" ? tr(src, false) : src;
+      if (out !== cur) { if (!rec) { rec = {}; aRec.set(el, rec); } rec[a] = { src, out }; el.setAttribute(a, out); }
+      else if (r && cur !== r.out) delete rec[a];
+    }
+  }
+
+  function walkAll(root) {
+    if (root.nodeType === 3) { doText(root); return; }
+    if (root.nodeType !== 1 && root.nodeType !== 9) return;
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = tw.nextNode(); n; n = tw.nextNode()) doText(n);
+    const base = root.nodeType === 9 ? root.documentElement : root;
+    if (base.matches && base.matches("[title],[placeholder],[aria-label],[alt]")) doAttrs(base);
+    for (const el of base.querySelectorAll("[title],[placeholder],[aria-label],[alt]")) doAttrs(el);
+  }
+
+  function walk(root) {
+    if (root.nodeType === 1 && root.closest(".md")) {
+      // obsah odpovědi: překládají se jen ovládací prvky vykreslovačů (kopírovat, náhled, diagram)
+      const hit = new Set(root.querySelectorAll(UIQ));
+      if (root.matches(UIQ)) hit.add(root);
+      for (const el of hit) walkAll(el);
+      return;
+    }
+    walkAll(root);
+  }
+
+  const mo = new MutationObserver((recs) => {
+    if (lang === "cs" && !touched) return;
+    const texts = new Set(), attrs = new Set(), adds = new Set();
+    for (const r of recs) {
+      if (r.type === "characterData") texts.add(r.target);
+      else if (r.type === "attributes") attrs.add(r.target);
+      else for (const n of r.addedNodes) adds.add(n);
+    }
+    for (const n of adds) if (n.isConnected) walk(n);
+    for (const n of texts) if (n.isConnected) doText(n);
+    for (const el of attrs) if (el.isConnected) doAttrs(el);
+    mo.takeRecords();
+  });
+
+  const pref = () => { try { return localStorage.getItem(KEY) || "auto"; } catch (e) { return "auto"; } };
+  const resolve = (p) => p === "cs" || p === "en" ? p : ((navigator.language || "cs").toLowerCase().startsWith("cs") ? "cs" : "en");
+
+  function paintSeg(p) {
+    for (const b of document.querySelectorAll("#langSeg button")) {
+      const on = b.dataset.lang === p;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", String(on));
+    }
+  }
+
+  function apply(p) {
+    const before = lang;
+    lang = resolve(p);
+    document.documentElement.lang = lang;
+    if (lang === "en") touched = true;
+    if (lang === "en" || touched) walkAll(document);
+    mo.takeRecords();
+    paintSeg(p);
+    // texty skládané skriptem (data, čísla, relativní časy) se přegenerují ve zvoleném jazyce
+    if (ready && before !== lang) try { renderList(); renderLimits(); updateHeader(); if (document.body.dataset.view === "usage" && state.usage) renderUsage(state.usage); } catch (e) { /* UI ještě není připravené */ }
+    for (const f of document.querySelectorAll("#gridPanes iframe")) { try { f.contentWindow.__setLang(p); } catch (e) { /* panel ještě nenačtený */ } }
+  }
+
+  function setPref(p) {
+    try { localStorage.setItem(KEY, p); } catch (e) { /* bez úložiště jen pro tuto relaci */ }
+    apply(p);
+  }
+  window.__setLang = (p) => apply(p);
+  window.addEventListener("storage", (e) => { if (e.key === KEY) apply(pref()); });
+
+  function wire() {
+    const dlg = document.getElementById("dlgSettings");
+    const open = () => { paintSeg(pref()); dlg.hidden = false; };
+    const close = () => { dlg.hidden = true; };
+    document.getElementById("btnSettings").addEventListener("click", open);
+    document.getElementById("dlgSetClose").addEventListener("click", close);
+    dlg.addEventListener("mousedown", (e) => { if (e.target === dlg) close(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !dlg.hidden) { e.preventDefault(); close(); } });
+    document.getElementById("langSeg").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-lang]");
+      if (b) setPref(b.dataset.lang);
+    });
+  }
+
+  wire();
+  mo.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  apply(pref());
+  ready = true;
+})();
 </script>
 </body>
 </html>

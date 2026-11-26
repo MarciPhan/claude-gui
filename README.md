@@ -2,7 +2,7 @@
 
 **English** | [Čeština](README.cs.md)
 
-A local native window (GTK4 + libadwaita + WebKitGTK 6.0) for the [Claude Code](https://claude.com/claude-code) CLI. No server, no browser: the UI is a single `index.html`. The interface is currently in Czech.
+A local native window (GTK4 + libadwaita + WebKitGTK 6.0) for the [Claude Code](https://claude.com/claude-code) CLI. No server, no browser: the UI is a single `index.html`. The interface is available in English and Czech (gear icon in the sidebar, Settings, Interface language; default follows the system language).
 
 Features: several conversations at once, history and resume (`--resume`), folders/projects, model and effort selection, limits and a usage dashboard, split view, diffs in tool calls, attachments (drag & drop, clipboard paste, previews), formulas (KaTeX), charts, Mermaid diagrams, tables, inline images/audio/video.
 
