@@ -3,7 +3,7 @@
 """
 Claude GUI – nativní okno (GTK4 + libadwaita + WebKitGTK).
 
-Žádný HTTP server ani prohlížeč: UI (index.html) běží ve vestavěném WebKitu
+Žádný HTTP server ani prohlížeč: UI (složené z ui/) běží ve vestavěném WebKitu
 a s jádrem (core.py) mluví přes `window.webkit.messageHandlers.api`.
 """
 
@@ -27,7 +27,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import core  # noqa: E402
 
 APP_ID = "cz.marcipan.ClaudeGui"
-INDEX_FILE = Path(__file__).resolve().parent / "index.html"
 DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "claude-gui-data"
 BASE_URI = "claude-gui://app/"
 
@@ -70,7 +69,7 @@ class Window(Adw.ApplicationWindow):
         self.install_zoom_shortcuts()
 
         nonce = secrets.token_urlsafe(16)
-        html = INDEX_FILE.read_text("utf-8").replace("__CSP_NONCE__", nonce)
+        html = core.build_index(nonce)
         csp = (f'<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; frame-src about: blob:; '
                f"script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; font-src data:; media-src blob:; img-src data: blob:\">")
         html = html.replace("</head>", csp + "</head>", 1)

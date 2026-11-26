@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Claude Code</title>
+<style>
+<!--@include styles/base.css-->
+<!--@include styles/sidebar.css-->
+<!--@include styles/chat.css-->
+<!--@include styles/usage.css-->
+<!--@include styles/dialogs.css-->
+<!--@include styles/theme.css-->
+<!--@include styles/features.css-->
+</style>
+</head>
+<body data-view="chat">
+<div id="app">
+  <aside id="sidebar">
+    <div class="side-head">
+      <div class="brand"><span class="logo" data-icon="logo"></span><span>Claude Code</span></div>
+      <button id="btnCloseSide" class="icon-btn" data-icon="close" title="Skrýt panel" aria-label="Skrýt panel"></button>
+    </div>
+    <button id="btnNew" class="nav-new" type="button"></button>
+    <nav class="nav" aria-label="Zobrazení">
+      <button id="tabChat" class="nav-item active" type="button"><span data-icon="chat"></span><span>Konverzace</span></button>
+      <button id="tabProjects" class="nav-item" type="button"><span data-icon="folder"></span><span>Projekty</span></button>
+      <button id="tabUsage" class="nav-item" type="button"><span data-icon="usage"></span><span>Využití</span></button>
+      <button id="tabSplit" class="nav-item" type="button" title="Více konverzací vedle sebe (Ctrl+\)"><span data-icon="split"></span><span>Rozdělit</span></button>
+    </nav>
+    <div class="search">
+      <span data-icon="search"></span>
+      <input id="search" type="search" placeholder="Hledat v názvech i textu" autocomplete="off" spellcheck="false" aria-label="Hledat v konverzacích">
+    </div>
+    <div id="searchInfo" class="search-info" hidden></div>
+    <nav id="list" class="list" aria-label="Konverzace"></nav>
+    <button id="glimpse" class="glimpse" type="button" title="Otevřít přehled využití">
+      <div class="glimpse-top"><span>Dnes</span><span id="glimpseMsgs"></span></div>
+      <div class="glimpse-val" id="glimpseVal">Načítám…</div>
+    </button>
+    <div class="side-foot">
+      <span id="countInfo"></span>
+      <button id="btnSettings" class="icon-btn" type="button" data-icon="gear" title="Nastavení" aria-label="Nastavení"></button>
+      <button id="btnRefresh" class="link-btn" type="button" title="Znovu načíst seznam"></button>
+    </div>
+  </aside>
+  <div id="scrim" class="scrim"></div>
+
+  <main>
+    <header class="top chat-only">
+      <button id="btnMenu" class="icon-btn only-narrow only-hidden" data-icon="menu" title="Konverzace" aria-label="Zobrazit konverzace"></button>
+      <div class="top-info">
+        <h1 id="title">Claude Code</h1>
+        <div id="cwd" class="cwd"></div>
+      </div>
+      <div class="top-ctrl">
+        <div id="ctx" class="ctx" hidden><span id="ctxLabel"></span><span class="ctx-bar"><i id="ctxFill"></i></span></div>
+        <button id="btnClear" class="icon-btn" type="button" hidden data-icon="broom" title="Vyčistit kontext (nová konverzace ve stejné složce, stará zůstane v seznamu)" aria-label="Vyčistit kontext"></button>
+        <div id="bypassWarn" class="warn chat-only" role="alert" hidden title="Zapnutý režim bypassPermissions: Claude spouští libovolné příkazy a mění či maže soubory bez jakéhokoli potvrzení. Používejte ho jen v izolovaném prostředí, kde vám nevadí ztráta dat.">
+          <span data-icon="alert"></span>bypassPermissions
+        </div>
+        <div class="limits limits-host"></div>
+        
+      </div>
+    </header>
+
+    <section id="messages" class="messages chat-only" aria-live="polite"></section>
+
+    <footer class="composer chat-only">
+      <div id="queue" class="queue" hidden></div>
+      <div id="status" class="status" hidden><span class="spinner"></span><span id="statusText">Claude pracuje</span></div>
+      <button id="btnDown" class="down-btn" type="button" hidden title="Na konec konverzace" aria-label="Na konec konverzace" data-icon="arrowdown"></button>
+      <div class="composer-card">
+        <div id="attStrip" class="att-strip" hidden></div>
+        <textarea id="input" rows="1" placeholder="Napište zprávu pro Claude, nebo sem přetáhněte soubory" aria-label="Zpráva"></textarea>
+        <div class="composer-bar">
+          <button id="btnAttach" class="icon-btn attach" type="button" title="Přiložit soubory nebo obrázky" aria-label="Přiložit soubory" data-icon="clip"></button>
+          <input id="fileIn" type="file" multiple hidden>
+          <div class="tools-wrap">
+            <button id="btnTools" class="icon-btn attach" type="button" title="Nástroje" aria-label="Nástroje" aria-haspopup="true" data-icon="tools"></button>
+            <div id="toolsPop" class="pop" hidden>
+              <div class="pop-sec">
+                <button class="opt" type="button" data-tool="prompts"><span class="opt-name">Knihovna promptů</span><small>Uložené šablony zpráv</small></button>
+                <button class="opt" type="button" data-tool="kb"><span class="opt-name">Znalostní báze</span><small>Trvalé instrukce pro nové konverzace</small></button>
+                <button class="opt" type="button" data-tool="review"><span class="opt-name">Recenze druhým modelem</span><small>Posoudí poslední odpověď jiný poskytovatel</small></button>
+                <button class="opt" type="button" data-tool="compact"><span class="opt-name">Zkomprimovat kontext</span><small>Pošle /compact</small></button>
+                <button class="opt" type="button" data-tool="export"><span class="opt-name">Exportovat konverzaci</span><small>Markdown, HTML nebo PDF</small></button>
+                <button class="opt" type="button" data-tool="preview"><span class="opt-name">Náhled webu / aplikace</span><small>Otevře URL nebo soubor</small></button>
+                <button class="opt" type="button" data-tool="checkpoints"><span class="opt-name">Kontrolní body</span><small>Vrátit změny před během</small></button>
+              </div>
+            </div>
+          </div>
+          <div class="pick-wrap">
+            <button id="btnPick" class="pick" type="button" aria-haspopup="true" aria-expanded="false"><span id="pickLabel">Model</span><span data-icon="chevdown"></span></button>
+            <div id="pop" class="pop" hidden>
+              <div class="pop-sec">
+                <div class="pop-title">Poskytovatel</div>
+                <button class="opt" type="button" data-set="provider" data-v="claude"><span class="opt-name">Claude</span><small>Claude Code CLI</small></button>
+                <button class="opt" type="button" data-set="provider" data-v="codex"><span class="opt-name">Codex</span><small>OpenAI Codex CLI, konverzace zůstává společná</small></button>
+                <button class="opt" type="button" data-set="provider" data-v="opencode"><span class="opt-name">OpenCode</span><small>OpenCode CLI, konverzace zůstává společná</small></button>
+              </div>
+              <div class="pop-sec">
+                <div class="pop-title">Model</div>
+                <button class="opt" type="button" data-set="model" data-v=""><span class="opt-name">Výchozí</span><small>podle nastavení Claude Code</small></button>
+                <button class="opt" type="button" data-set="model" data-v="opus"><span class="opt-name">Opus</span><small>Nejschopnější, na složité úkoly</small></button>
+                <button class="opt" type="button" data-set="model" data-v="sonnet"><span class="opt-name">Sonnet</span><small>Vyvážený, na každodenní práci</small></button>
+                <button class="opt" type="button" data-set="model" data-v="haiku"><span class="opt-name">Haiku</span><small>Nejrychlejší a nejlevnější</small></button>
+              </div>
+              <div class="pop-sec">
+                <div class="pop-title">Úroveň přemýšlení</div>
+                <div class="chips">
+                  <button class="chip" type="button" data-set="effort" data-v="">Výchozí</button>
+                  <button class="chip" type="button" data-set="effort" data-v="low">Nízká</button>
+                  <button class="chip" type="button" data-set="effort" data-v="medium">Střední</button>
+                  <button class="chip" type="button" data-set="effort" data-v="high">Vysoká</button>
+                  <button class="chip" type="button" data-set="effort" data-v="xhigh">Velmi vysoká</button>
+                  <button class="chip" type="button" data-set="effort" data-v="max">Max</button>
+                </div>
+              </div>
+              <details class="pop-sec pop-adv">
+                <summary>Pokročilé</summary>
+                <div class="pop-title">Co smí Claude dělat</div>
+                <button class="opt" type="button" data-set="mode" data-v="plan"><span class="opt-name">Jen číst a plánovat</span></button>
+                <button class="opt" type="button" data-set="mode" data-v="acceptEdits"><span class="opt-name">Číst a upravovat soubory</span><small>doporučeno</small></button>
+                <button class="opt" type="button" data-set="mode" data-v="auto"><span class="opt-name">Automaticky</span><small>rozhoduje klasifikátor</small></button>
+                <button class="opt" type="button" data-set="mode" data-v="default"><span class="opt-name">Zamítat vše riskantní</span></button>
+                <button class="opt" type="button" data-set="mode" data-v="bypassPermissions"><span class="opt-name">Vše bez ptaní</span><small>nebezpečné, bez jakékoli kontroly</small></button>
+                <div class="pop-title">Rozšíření (MCP servery a skilly)</div>
+                <button class="opt" type="button" data-set="env" data-v="auto"><span class="opt-name">Načíst jednou, pak úsporně</span><small>doporučeno</small></button>
+                <button class="opt" type="button" data-set="env" data-v="lean"><span class="opt-name">Nikdy</span><small>nejméně tokenů</small></button>
+                <button class="opt" type="button" data-set="env" data-v="full"><span class="opt-name">Vždy</span><small>nejvíc tokenů</small></button>
+                <button id="btnReload" class="opt" type="button"><span class="opt-name">Donačíst při další zprávě</span></button>
+              </details>
+            </div>
+          </div>
+          <button id="btnSend" class="send" type="button" title="Odeslat" aria-label="Odeslat"></button>
+        </div>
+      </div>
+      <div hidden>
+        <select id="provider"><option value="claude"></option><option value="codex"></option><option value="opencode"></option></select>
+        <select id="mode"><option value="default"></option><option value="acceptEdits"></option><option value="auto"></option><option value="plan"></option><option value="bypassPermissions"></option></select>
+        <select id="model"><option value=""></option><option value="opus"></option><option value="sonnet"></option><option value="haiku"></option></select>
+        <select id="env"><option value="auto"></option><option value="lean"></option><option value="full"></option></select>
+        <select id="effort"><option value=""></option><option value="low"></option><option value="medium"></option><option value="high"></option><option value="xhigh"></option><option value="max"></option></select>
+      </div>
+      <div class="hint">Enter odešle, Shift+Enter vloží nový řádek</div>
+    </footer>
+
+    <section id="usageView" class="usage" aria-label="Využití">
+      <header class="u-head">
+        <button id="btnMenu2" class="icon-btn only-narrow only-hidden" data-icon="menu" title="Konverzace" aria-label="Zobrazit konverzace"></button>
+        <h1>Využití</h1>
+        <div class="limits limits-host"></div>
+        <div id="rangeSeg" class="seg" role="tablist" aria-label="Období">
+          <button type="button" data-r="h5">5 hodin</button>
+          <button type="button" data-r="today">Dnes</button>
+          <button type="button" data-r="d7">7 dní</button>
+          <button type="button" data-r="d30">30 dní</button>
+        </div>
+        <button id="btnUsageRefresh" class="icon-btn" type="button" data-icon="refresh" title="Přepočítat" aria-label="Přepočítat"></button>
+      </header>
+      <div id="usageBody" class="u-body"></div>
+    </section>
+  </main>
+</div>
+
+<div id="dlg" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="modal-head">
+      <h2 id="dlgTitle">Nová konverzace</h2>
+      <button id="dlgClose" class="icon-btn" data-icon="close" title="Zavřít" aria-label="Zavřít"></button>
+    </div>
+    <label class="field-label" for="cwdInput">Pracovní složka</label>
+    <input id="cwdInput" class="text-input" type="text" spellcheck="false" autocomplete="off" placeholder="~/projekty/muj-projekt">
+    <div class="field-hint">Claude poběží v této složce. Vyberte některou z dříve použitých, nebo zadejte cestu (funguje i ~).</div>
+    <div id="dlgError" class="field-error" hidden></div>
+    <div id="cwdList" class="cwd-list"></div>
+    <div class="modal-foot">
+      <button id="dlgCancel" class="btn" type="button">Zrušit</button>
+      <button id="dlgOk" class="btn primary" type="button">Začít konverzaci</button>
+    </div>
+  </div>
+</div>
+
+<section id="grid" aria-label="Rozdělené zobrazení">
+  <div class="grid-bar">
+    <div class="grid-title">Více konverzací vedle sebe</div>
+    <div class="limits limits-host"></div>
+    <div id="layoutSeg" class="seg" role="tablist">
+      <button type="button" data-l="2">2 panely</button>
+      <button type="button" data-l="3">3 panely</button>
+      <button type="button" data-l="4">4 panely</button>
+    </div>
+    <button id="btnGridExit" class="btn" type="button">Zpět na jednu konverzaci</button>
+  </div>
+  <div id="gridPanes" class="grid-panes"></div>
+</section>
+
+<div id="lightbox" class="lightbox" hidden><button id="lbClose" class="lb-close" type="button" title="Zavřít (Esc)" aria-label="Zavřít" data-icon="close"></button><div class="lb-stage"><img id="lbImg" alt=""></div><div id="lbCap" class="lb-cap"></div></div>
+
+<div id="dropOv" class="drop-ov" hidden><div class="drop-box"><span data-icon="clip"></span><b>Pustit pro přiložení</b><small>obrázky, dokumenty, kód, cokoli</small></div></div>
+
+<div id="dlgTools" class="modal" hidden>
+<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="toolsTitle">
+<div class="modal-head"><h2 id="toolsTitle"></h2><button id="toolsClose" class="icon-btn" data-icon="close" title="Zavřít" aria-label="Zavřít"></button></div>
+<div id="toolsBody"></div>
+<div id="toolsFoot" class="modal-foot"></div>
+</div></div>
+<div id="dlgText" class="modal" hidden>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="dlgTextTitle">
+    <div class="modal-head">
+      <h2 id="dlgTextTitle"></h2>
+      <button id="dlgTextClose" class="icon-btn" data-icon="close" title="Zavřít" aria-label="Zavřít"></button>
+    </div>
+    <input id="dlgTextInput" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false">
+    <div class="modal-foot">
+      <button id="dlgTextCancel" class="btn" type="button">Zrušit</button>
+      <button id="dlgTextOk" class="btn primary" type="button">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlgSettings" class="modal" hidden>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="dlgSetTitle">
+    <div class="modal-head">
+      <h2 id="dlgSetTitle">Nastavení</h2>
+      <button id="dlgSetClose" class="icon-btn" data-icon="close" title="Zavřít" aria-label="Zavřít"></button>
+    </div>
+    <div class="field-label">Jazyk rozhraní</div>
+    <div id="langSeg" class="seg" role="tablist" aria-label="Jazyk rozhraní">
+      <button type="button" data-lang="auto">Automaticky</button>
+      <button type="button" data-lang="cs" translate="no">Čeština</button>
+      <button type="button" data-lang="en" translate="no">English</button>
+    </div>
+    <div class="field-hint">Automaticky = podle jazyka systému.</div>
+  </div>
+</div>
+
+<div id="menu" class="menu" role="menu" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script nonce="__CSP_NONCE__">
+"use strict";
+
+<!--@include scripts/config.js-->
+<!--@include scripts/icons.js-->
+<!--@include scripts/util.js-->
+<!--@include scripts/markdown.js-->
+<!--@include scripts/transcript.js-->
+<!--@include scripts/shell.js-->
+<!--@include scripts/sessions.js-->
+<!--@include scripts/conversation.js-->
+<!--@include scripts/chat.js-->
+<!--@include scripts/tools.js-->
+<!--@include scripts/send.js-->
+<!--@include scripts/misc.js-->
+<!--@include scripts/usage.js-->
+<!--@include scripts/limits.js-->
+<!--@include scripts/composer.js-->
+</script>
+<script nonce="__CSP_NONCE__">
+<!--@include scripts/i18n.js-->
+</script>
+</body>
+</html>

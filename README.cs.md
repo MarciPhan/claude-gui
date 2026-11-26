@@ -2,7 +2,7 @@
 
 [English](README.md) | **Čeština**
 
-Lokální nativní okno (GTK4 + libadwaita + WebKitGTK 6.0) pro [Claude Code](https://claude.com/claude-code) CLI. Žádný server ani prohlížeč, UI je jediný soubor `index.html`. Rozhraní je česky i anglicky (ozubené kolo v postranním panelu, Nastavení, Jazyk rozhraní; výchozí je jazyk systému).
+Lokální nativní okno (GTK4 + libadwaita + WebKitGTK 6.0) pro [Claude Code](https://claude.com/claude-code) CLI. Žádný server ani prohlížeč, UI je rozdělené do malých souborů v `claude-gui/ui/` (styly, skripty), které se při startu složí do jednoho dokumentu se striktní CSP. Rozhraní je česky i anglicky (ozubené kolo v postranním panelu, Nastavení, Jazyk rozhraní; výchozí je jazyk systému).
 
 Funkce: více konverzací najednou, historie a pokračování (`--resume`), složky/projekty, model a effort, limity a dashboard využití, split view, diffy v nástrojích, přílohy (drag & drop, vložení ze schránky, náhledy), vzorce (KaTeX), grafy, Mermaid diagramy, tabulky, zobrazení obrázků/audia/videa.
 

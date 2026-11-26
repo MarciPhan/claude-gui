@@ -45,7 +45,7 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/":
-            html = core.INDEX_FILE.read_text("utf-8").replace("__CSP_NONCE__", "N")
+            html = core.build_index("N")
             return self._send(200, html.replace("<script nonce=\"N\">", SHIM + "<script nonce=\"N\">", 1), "text/html; charset=utf-8")
         if self.path == "/events":
             q = queue.Queue()

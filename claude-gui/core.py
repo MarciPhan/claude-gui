@@ -31,7 +31,19 @@ APP_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(APP_DIR))
 import extras  # noqa: E402
 import providers  # noqa: E402
-INDEX_FILE = APP_DIR / "index.html"
+UI_DIR = APP_DIR / "ui"
+INDEX_FILE = UI_DIR / "index.html"
+INCLUDE_RE = re.compile(r"^<!--@include ([\w\-]+/[\w\-]+\.(?:css|js))-->\n", re.M)
+
+
+def build_index(nonce):
+    """Složí UI z ui/index.html a částí ve styles/ a scripts/ do jednoho dokumentu.
+
+    Zůstává jediný dokument s CSP a nonce (žádné externí skripty), proto se části vkládají, ne načítají.
+    """
+    def part(m):
+        return (UI_DIR / m.group(1)).read_text("utf-8")
+    return INCLUDE_RE.sub(part, INDEX_FILE.read_text("utf-8")).replace("__CSP_NONCE__", nonce)
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
 CLAUDE_BIN = shutil.which("claude") or "/usr/bin/claude"
 
