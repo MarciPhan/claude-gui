@@ -183,9 +183,9 @@ function startWorkspaceChat(wid) {
 function workspaceMenu(anchor, wid) {
   const w = wsById(wid);
   if (!w) return;
-  const entries = [{ text: "Nová konverzace", icon: ICONS.plus, fn: () => startWorkspaceChat(wid) }];
+  const entries = [];
   if (w.commands.length) {
-    entries.push({ sep: true }, { label: "Příkazy" });
+    entries.push({ label: "Příkazy" });
     w.commands.forEach((c, i) => entries.push({ text: c.name, icon: ICONS.play, fn: () => runWsCommand(wid, i) }));
   }
   entries.push({ sep: true },

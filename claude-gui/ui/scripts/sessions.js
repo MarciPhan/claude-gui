@@ -80,7 +80,7 @@ function isOpen(key, hasCurrent) {
   return key.startsWith("f:") || key === "pin" || hasCurrent;
 }
 
-function groupEl(key, iconHtml, name, count, arr, startToday, actHtml, actData, emptyText) {
+function groupEl(key, iconHtml, name, count, arr, startToday, actHtml, actData, emptyText, extra) {
   const hasCurrent = !!state.current && arr.some((s) => s.id === state.current.id);
   const open = isOpen(key, hasCurrent);
   const g = document.createElement("div");
@@ -102,6 +102,16 @@ function groupEl(key, iconHtml, name, count, arr, startToday, actHtml, actData, 
     act.setAttribute("aria-label", actHtml.title);
     for (const [k, v] of Object.entries(actData)) act.dataset[k] = v;
     g.appendChild(act);
+  }
+  if (extra) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "grp-act second";
+    b.innerHTML = extra.icon;
+    b.title = extra.title;
+    b.setAttribute("aria-label", extra.title);
+    for (const [k, v] of Object.entries(extra.data)) b.dataset[k] = v;
+    g.appendChild(b);
   }
   if (open) {
     const body = document.createElement("div");
@@ -167,7 +177,8 @@ function renderList() {
     for (const w of state.ws.items) {
       const arr = (byCwd.get(w.path) || []).slice();
       const g = groupEl("w:" + w.id, ICONS.folder, w.name, arr.length, arr, startToday,
-        { icon: ICONS.more, title: "Akce prostoru" }, { act: "wsmenu", wid: w.id }, "Zatím žádná konverzace");
+        { icon: ICONS.more, title: "Akce prostoru" }, { act: "wsmenu", wid: w.id }, "Zatím žádná konverzace",
+        { icon: ICONS.plus, title: "Nová konverzace v prostoru", data: { act: "wsnew", wid: w.id } });
       g.querySelector(".grp-head").title = w.path + (w.exists ? "" : " (složka neexistuje)");
       frag.appendChild(g);
     }
@@ -350,6 +361,7 @@ function onListClick(e) {
     const a = act.dataset.act;
     if (a === "newchat") startChatIn(act.dataset.cwd);
     else if (a === "newws") editWorkspace(null);
+    else if (a === "wsnew") startWorkspaceChat(act.dataset.wid);
     else if (a === "wsmenu") workspaceMenu(act, act.dataset.wid);
     else if (a === "newfolder") newFolder();
     else if (a === "foldermenu") folderMenu(act, act.dataset.fid);

@@ -152,3 +152,4 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
 .ws-out{margin:0;padding:12px;max-height:60vh;overflow:auto;white-space:pre-wrap;word-break:break-word;font:12px var(--mono);background:var(--bg);border:1px solid var(--border);border-radius:9px}
 .ws-out.fail{border-color:#c0504d}
 .empty-note{padding:6px 10px 10px;font-size:12px;color:var(--faint,#888);line-height:1.45}
+.grp-act.second{right:32px}

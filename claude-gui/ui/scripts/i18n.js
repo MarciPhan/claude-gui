@@ -4,7 +4,7 @@
    nebo (mimo obsah zpráv) shoda frází podle slovníku. Obsah konverzací se nikdy nepřekládá. */
 (() => {
   const EN = {
-    "Skrýt panel": "Hide panel", "Zobrazení": "View", "Využití": "Usage", "Přehled využití…": "Usage overview…", "Konverzace": "Conversations", "Projekty": "Projects", "Pracovní prostory": "Workspaces",
+    "Skrýt panel": "Hide panel", "Zobrazení": "View", "Využití": "Usage", "Přehled využití…": "Usage overview…", "Nová konverzace v prostoru": "New conversation in workspace", "Konverzace": "Conversations", "Projekty": "Projects", "Pracovní prostory": "Workspaces",
     "Více konverzací vedle sebe (Ctrl+\\)": "Several conversations side by side (Ctrl+\\)", "Rozdělit": "Split",
     "Hledat v názvech i textu": "Search titles and text", "Hledat v konverzacích": "Search conversations", "Hledat (Ctrl+K)": "Search (Ctrl+K)",
     "Otevřít přehled využití": "Open usage overview", "Načítám…": "Loading…", "Znovu načíst seznam": "Reload list",
