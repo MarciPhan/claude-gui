@@ -1632,7 +1632,7 @@ function buildChart(spec) {
 
   data.forEach((d, si) => {
     const col = CHART_COLORS[si % CHART_COLORS.length];
-    const tip = (p) => "<title>" + esc((d.name ? d.name + ": " : "") + p.x + " → " + fmtTick(p.y)) + "</title>";
+    const tip = (p) => "<title>" + esc((d.name ? d.name + ": " : "") + p.x + " = " + fmtTick(p.y)) + "</title>";
     const xy = d.pts.map((p, i) => [sx(p, i), sy(p.y), p]);
     if (kind === "line" || kind === "area") {
       let path = "";
