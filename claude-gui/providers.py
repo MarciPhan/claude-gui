@@ -175,9 +175,13 @@ def start_chat(prov, message, cwd, mode, sid, ctx, emit, ephemeral=False):
     payload = message
     if not psid and not new and not ephemeral:
         payload = handoff_text(ctx["transcript"](path)["items"]) + message
+    if ctx.get("hint"):
+        payload = ctx["hint"] + "\n\n" + payload
     readonly = mode in ("default", "plan")
     cmd, stdin_text = _cmd(prov, payload, cwd, readonly, psid, auto=mode in ("auto", "bypassPermissions"))
-    proc = subprocess.Popen(cmd, cwd=cwd, stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL,
+    env = dict(os.environ)
+    env.update(ctx.get("env") or {})
+    proc = subprocess.Popen(cmd, cwd=cwd, env=env, stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
     run_id = uuid.uuid4().hex[:16]
     ctx["register"](run_id, proc)

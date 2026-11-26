@@ -156,6 +156,55 @@ async function toolPreview() {
   });
 }
 
+async function toolVault() {
+  let data;
+  try { data = await apiJson("/api/vault"); } catch (e) { showToast(e.message); return; }
+  const render = (body, ft) => {
+    body.replaceChildren();
+    body.appendChild(noteEl("Hesla se ukládají do klíčenky systému a nikdy se nevrací do okna. AI je dostane jen jako proměnné prostředí u položek, které povolíte."));
+    if (!data.keyring) body.appendChild(noteEl("Chybí secret-tool (balíček libsecret), hesla nelze uložit.", "error"));
+    for (const it of data.items) {
+      body.appendChild(mkRow(it.name + (it.ai ? " (AI)" : ""), it.kind + " " + (it.user ? it.user + "@" : "") + it.host + (it.port ? ":" + it.port : "") + (it.has_secret ? "" : " bez hesla"), [
+        mkBtn("Upravit", () => form(it, body, ft)),
+        mkBtn("Smazat", async () => {
+          if (!confirm("Smazat přístup včetně hesla z klíčenky?")) return;
+          await apiJson("/api/vault_delete", { method: "POST", body: JSON.stringify({ id: it.id }) });
+          data.items = data.items.filter((x) => x !== it); render(body, ft);
+        }),
+      ]));
+    }
+    if (!data.items.length) body.appendChild(noteEl("Zatím žádné přístupy."));
+    ft.replaceChildren(mkBtn("Přidat přístup", () => form(null, body, ft)), mkBtn("Zavřít", closeTools, true));
+  };
+  const form = (it, body, ft) => {
+    body.replaceChildren();
+    const f = {};
+    const field = (key, ph, type) => {
+      const i = document.createElement("input"); i.className = "text-input"; i.placeholder = ph; i.type = type || "text";
+      i.value = it && it[key] ? it[key] : ""; i.autocomplete = "off"; f[key] = i; body.appendChild(i); return i;
+    };
+    field("name", "Název (např. Web klienta)");
+    const k = document.createElement("select"); k.className = "text-input";
+    for (const x of ["ftp", "sftp", "ssh", "api", "db", "other"]) { const o = document.createElement("option"); o.value = x; o.textContent = x; k.appendChild(o); }
+    k.value = it ? it.kind : "ftp"; body.appendChild(k);
+    field("host", "Server (host)"); field("port", "Port (volitelné)"); field("user", "Uživatel");
+    const pw = field("secret", it && it.has_secret ? "Heslo (prázdné = beze změny)" : "Heslo", "password");
+    field("note", "Poznámka pro AI (volitelné)");
+    const lab = document.createElement("label"); lab.style.display = "flex"; lab.style.gap = "8px"; lab.style.alignItems = "center";
+    const ai = document.createElement("input"); ai.type = "checkbox"; ai.checked = !!(it && it.ai);
+    lab.append(ai, document.createTextNode("Dát k dispozici AI (jako proměnné prostředí)")); body.appendChild(lab);
+    ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)), mkBtn("Uložit", async () => {
+      const payload = { id: it ? it.id : "", kind: k.value, ai: ai.checked };
+      for (const key of Object.keys(f)) payload[key] = f[key].value;
+      try {
+        const r = await apiJson("/api/vault_save", { method: "POST", body: JSON.stringify(payload) });
+        pw.value = ""; data = await apiJson("/api/vault"); render(body, ft);
+      } catch (e) { showToast(e.message); }
+    }, true));
+  };
+  openTools("Přístupy (trezor)", render);
+}
+
 function toolCompact() {
   if (state.run) { showToast("Počkejte na dokončení práce."); return; }
   send("/compact");
@@ -214,7 +263,7 @@ function initTools() {
   pop.addEventListener("click", (e) => {
     const b = e.target.closest("[data-tool]"); if (!b) return;
     pop.hidden = true;
-    ({ prompts: toolPrompts, kb: toolKb, review: reviewLast, compact: toolCompact, export: toolExport, preview: toolPreview, checkpoints: toolCheckpoints })[b.dataset.tool]();
+    ({ prompts: toolPrompts, kb: toolKb, review: reviewLast, compact: toolCompact, export: toolExport, preview: toolPreview, checkpoints: toolCheckpoints, vault: toolVault })[b.dataset.tool]();
   });
   $("toolsClose").addEventListener("click", closeTools);
   toolsDlg().addEventListener("click", (e) => { if (e.target === toolsDlg()) closeTools(); });

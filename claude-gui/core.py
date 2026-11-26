@@ -30,7 +30,8 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(APP_DIR))
 import extras  # noqa: E402
-import providers  # noqa: E402
+import providers
+import vault  # noqa: E402
 UI_DIR = APP_DIR / "ui"
 INDEX_FILE = UI_DIR / "index.html"
 INCLUDE_RE = re.compile(r"^<!--@include ([\w\-]+/[\w\-]+\.(?:css|js))-->\n", re.M)
@@ -669,6 +670,14 @@ def api_call(method, path, query, body):
         if path == "/api/kb_delete":
             LIBRARY.kb_delete((body or {}).get("name"))
             return {"ok": True}
+        if path == "/api/vault_save":
+            try:
+                return {"id": VAULT.save(body or {})}
+            except (ValueError, RuntimeError) as exc:
+                raise ApiError(str(exc))
+        if path == "/api/vault_delete":
+            VAULT.delete(str((body or {}).get("id", "")))
+            return {"ok": True}
         if path == "/api/export":
             b = body or {}
             fmt = b.get("fmt")
@@ -700,6 +709,8 @@ def api_call(method, path, query, body):
         if t is None:
             raise ApiError("Dokument nenalezen.")
         return {"text": t}
+    if path == "/api/vault":
+        return {"items": VAULT.list(), "keyring": vault.available()}
     if path == "/api/ports":
         return {"items": extras.listening_ports()}
     if path == "/api/providers":
@@ -980,7 +991,8 @@ def start_chat(body, emit):
     if not ephemeral:
         emit = _with_checkpoint(emit, cwd, message, sid)
     if prov in providers.CLI:
-        ctx = {"projects_dir": PROJECTS_DIR, "find_file": lambda s: find_session_file(s) if s else None,
+        v_env, v_lines = VAULT.ai_env()
+        ctx = {"env": v_env, "hint": vault.hint(v_lines), "projects_dir": PROJECTS_DIR, "find_file": lambda s: find_session_file(s) if s else None,
                "transcript": load_transcript, "store": PROVIDER_STORE,
                "register": lambda rid, p: RUNS.__setitem__(rid, p), "unregister": lambda rid: RUNS.pop(rid, None)}
         try:
@@ -1002,6 +1014,9 @@ def start_chat(body, emit):
     if body.get("lean", True) is not False:
         cmd += LEAN_FLAGS
     cmd += ["--append-system-prompt", GUI_HINT]
+    vault_env, vault_lines = VAULT.ai_env()
+    if vault_lines:
+        cmd += ["--append-system-prompt", vault.hint(vault_lines)]
     if not sid:
         kb = LIBRARY.kb_prompt(body.get("kb") if isinstance(body.get("kb"), list) else [])
         if kb:
@@ -1023,6 +1038,7 @@ def start_chat(body, emit):
     env = dict(os.environ)
     env.pop("CLAUDECODE", None)
     env.pop("CLAUDE_CODE_ENTRYPOINT", None)
+    env.update(vault_env)
     try:
         proc = subprocess.Popen(cmd, cwd=cwd, env=env, stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -1104,6 +1120,7 @@ DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "sha
 LIMITS_FILE = DATA_DIR / "limits.json"
 PROVIDER_STORE = providers.Store(DATA_DIR / "provider_sessions.json")
 CHECKPOINTS = extras.Checkpoints(DATA_DIR / "checkpoints.json")
+VAULT = vault.Vault(DATA_DIR / "vault.json")
 LIBRARY = extras.Library(DATA_DIR)
 ORG_FILE = DATA_DIR / "organize.json"
 _limits = {"five_hour": None, "seven_day": None, "ts": 0}
