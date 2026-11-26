@@ -16,6 +16,7 @@ async function saveWorkspaces(items) {
     showToast("Prostory se nepodařilo uložit: " + e.message);
   }
   renderList();
+  if (state.view === "ws") { if (wsById(state.wsView)) renderWorkspaceDashboard(); else setView("chat"); }
 }
 
 function wsById(id) { return state.ws.items.find((w) => w.id === id); }
@@ -81,7 +82,7 @@ function wsSelect(options, value) {
 }
 
 async function editWorkspace(wid) {
-  const w = wsById(wid) || { id: "w" + Date.now().toString(36), name: "", path: "", instructions: "", commands: [], mode: "", model: "", provider: "" };
+  const w = wsById(wid) || { actions: [], id: "w" + Date.now().toString(36), name: "", path: "", instructions: "", commands: [], mode: "", model: "", provider: "" };
   const isNew = !wsById(wid);
   const body = document.createElement("div");
   body.className = "ws-form";
@@ -115,9 +116,15 @@ async function editWorkspace(wid) {
   cmds.rows = 4;
   cmds.value = w.commands.map((c) => (c.name === c.cmd ? c.cmd : c.name + " | " + c.cmd)).join("\n");
   cmds.placeholder = "Testy | npm test\ngo vet ./...";
+  const acts = document.createElement("textarea");
+  acts.className = "text-input ws-ta";
+  acts.rows = 6;
+  acts.value = (w.actions || []).map((a) => "### " + a.name + (a.desc ? " | " + a.desc : "") + "\n" + a.prompt).join("\n\n");
+  acts.placeholder = "### Audit | Podrobná kontrola\nText zadání pro Clauda…";
   body.append(wsField("Název", name), wsField("Složka", path), dl, row,
     wsField("Instrukce pro Clauda", ins, "Přidají se do systémového promptu u každé nové konverzace v prostoru."),
-    wsField("Příkazy", cmds, "Jeden na řádek, volitelně „název | příkaz“. Spouští se v seznamu prostoru."));
+    wsField("Příkazy", cmds, "Jeden na řádek, volitelně „název | příkaz“. Spouští se na dashboardu prostoru."),
+    wsField("Akce (zadání pro Clauda)", acts, "Každá začíná řádkem „### Název | popis“, pod ním text zadání. Na dashboardu z ní vznikne tlačítko, které spustí novou konverzaci."));
   wsModal(isNew ? "Nový pracovní prostor" : "Upravit prostor", body, [
     { text: "Zrušit", fn: (close) => close() },
     { text: "Uložit", primary: true, fn: async (close) => {
@@ -137,6 +144,12 @@ async function editWorkspace(wid) {
         const i = l.indexOf("|");
         return i > 0 ? { name: l.slice(0, i).trim(), cmd: l.slice(i + 1).trim() } : { name: l, cmd: l };
       }).filter((c) => c.cmd);
+      w.actions = acts.value.split(/^### /m).map((b) => b.trim()).filter(Boolean).map((b) => {
+        const nl = b.indexOf("\n");
+        const head = (nl < 0 ? b : b.slice(0, nl)).trim();
+        const i = head.indexOf("|");
+        return { name: (i > 0 ? head.slice(0, i) : head).trim(), desc: i > 0 ? head.slice(i + 1).trim() : "", prompt: nl < 0 ? "" : b.slice(nl + 1).trim() };
+      }).filter((a) => a.prompt);
       const items = state.ws.items.filter((x) => x.id !== w.id).concat([w]);
       state.open["w:" + w.id] = true;
       saveOpen();
@@ -195,4 +208,105 @@ function workspaceMenu(anchor, wid) {
       showToast("Prostor je smazaný, složka i konverzace zůstaly.");
     } });
   showMenu(anchor, entries);
+}
+
+function startWorkspaceAction(wid, index) {
+  const w = wsById(wid);
+  const a = w && w.actions[index];
+  if (!a) return;
+  startWorkspaceChat(wid);
+  if (state.current && state.current.workspace === wid) send(a.prompt);
+}
+
+function wsEl(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function openWorkspaceDashboard(wid) {
+  const w = wsById(wid);
+  if (!w) return;
+  state.wsView = wid;
+  setView("ws");
+  renderWorkspaceDashboard();
+}
+
+function renderWorkspaceDashboard() {
+  const host = $("wsView");
+  const w = wsById(state.wsView);
+  host.textContent = "";
+  if (!w) return;
+  const head = wsEl("header", "u-head");
+  const menu = wsEl("button", "icon-btn only-narrow only-hidden");
+  menu.type = "button";
+  menu.innerHTML = ICONS.menu;
+  menu.title = "Konverzace";
+  menu.addEventListener("click", openSidebar);
+  const h1 = wsEl("h1", "", w.name);
+  const path = wsEl("small", "", w.path);
+  path.style.cssText = "color:var(--faint);font:12px var(--mono)";
+  const edit = wsEl("button", "btn", "Upravit");
+  edit.type = "button";
+  edit.addEventListener("click", () => editWorkspace(w.id));
+  const nw = wsEl("button", "btn primary", "Nová konverzace");
+  nw.type = "button";
+  nw.addEventListener("click", () => startWorkspaceChat(w.id));
+  head.append(menu, h1, path, edit, nw);
+  const body = wsEl("div", "u-body");
+
+  if (w.actions.length) {
+    const sec = wsEl("section", "wsd-sec");
+    sec.appendChild(wsEl("h2", "", "Akce"));
+    const grid = wsEl("div", "wsd-grid");
+    w.actions.forEach((a, i) => {
+      const b = wsEl("button", "wsd-card");
+      b.type = "button";
+      b.append(wsEl("b", "", a.name), wsEl("span", "", a.desc || a.prompt.slice(0, 110) + "…"));
+      b.addEventListener("click", () => startWorkspaceAction(w.id, i));
+      grid.appendChild(b);
+    });
+    sec.appendChild(grid);
+    body.appendChild(sec);
+  }
+  if (w.commands.length) {
+    const sec = wsEl("section", "wsd-sec");
+    sec.appendChild(wsEl("h2", "", "Příkazy"));
+    const grid = wsEl("div", "wsd-grid");
+    w.commands.forEach((c, i) => {
+      const b = wsEl("button", "wsd-card cmd");
+      b.type = "button";
+      b.innerHTML = ICONS.play;
+      b.appendChild(wsEl("b", "", c.name));
+      b.addEventListener("click", () => runWsCommand(w.id, i));
+      grid.appendChild(b);
+    });
+    sec.appendChild(grid);
+    body.appendChild(sec);
+  }
+  const recent = state.sessions.filter((s) => s.cwd === w.path).sort((a, b) => b.mtime - a.mtime).slice(0, 8);
+  const sec = wsEl("section", "wsd-sec");
+  sec.appendChild(wsEl("h2", "", "Poslední konverzace"));
+  if (!recent.length) sec.appendChild(wsEl("div", "wsd-note", "Zatím žádná konverzace."));
+  else {
+    const list = wsEl("div", "wsd-recent");
+    const startToday = new Date().setHours(0, 0, 0, 0);
+    for (const s of recent) {
+      const b = wsEl("button");
+      b.type = "button";
+      b.append(wsEl("span", "", s.title || s.first || "Konverzace"), wsEl("small", "", formatTime(s.mtime * 1000, startToday)));
+      b.addEventListener("click", () => { setView("chat"); openSession(s.id); });
+      list.appendChild(b);
+    }
+    sec.appendChild(list);
+  }
+  body.appendChild(sec);
+  if (w.instructions.trim()) {
+    const s2 = wsEl("section", "wsd-sec");
+    s2.appendChild(wsEl("h2", "", "Instrukce prostoru"));
+    s2.appendChild(wsEl("div", "wsd-note", w.instructions));
+    body.appendChild(s2);
+  }
+  host.append(head, body);
 }

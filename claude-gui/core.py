@@ -1289,6 +1289,11 @@ def _clean_workspace(w):
     for c in (w.get("commands") or [])[:30]:
         if isinstance(c, dict) and str(c.get("cmd", "")).strip():
             cmds.append({"name": str(c.get("name") or c["cmd"]).strip()[:60], "cmd": str(c["cmd"]).strip()[:2000]})
+    acts = []
+    for a in (w.get("actions") or [])[:30]:
+        if isinstance(a, dict) and str(a.get("prompt", "")).strip():
+            acts.append({"name": str(a.get("name") or "Akce").strip()[:60], "desc": str(a.get("desc") or "").strip()[:200],
+                         "prompt": str(a["prompt"]).strip()[:20000]})
     mode = w.get("mode")
     model = w.get("model") or ""
     prov = w.get("provider")
@@ -1298,6 +1303,7 @@ def _clean_workspace(w):
         "path": os.path.abspath(os.path.expanduser(w["path"].strip())),
         "instructions": str(w.get("instructions") or "")[:20000],
         "commands": cmds,
+        "actions": acts,
         "mode": mode if mode in MODES else "",
         "model": model if isinstance(model, str) and (not model or MODEL_RE.match(model)) else "",
         "provider": prov if prov in ("claude", *providers.CLI) else "",

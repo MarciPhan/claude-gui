@@ -80,7 +80,7 @@ function isOpen(key, hasCurrent) {
   return key.startsWith("f:") || key === "pin" || hasCurrent;
 }
 
-function groupEl(key, iconHtml, name, count, arr, startToday, actHtml, actData, emptyText, extra) {
+function groupEl(key, iconHtml, name, count, arr, startToday, actHtml, actData, emptyText, extra, extra2) {
   const hasCurrent = !!state.current && arr.some((s) => s.id === state.current.id);
   const open = isOpen(key, hasCurrent);
   const g = document.createElement("div");
@@ -111,6 +111,16 @@ function groupEl(key, iconHtml, name, count, arr, startToday, actHtml, actData, 
     b.title = extra.title;
     b.setAttribute("aria-label", extra.title);
     for (const [k, v] of Object.entries(extra.data)) b.dataset[k] = v;
+    g.appendChild(b);
+  }
+  if (extra2) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "grp-act third";
+    b.innerHTML = extra2.icon;
+    b.title = extra2.title;
+    b.setAttribute("aria-label", extra2.title);
+    for (const [k, v] of Object.entries(extra2.data)) b.dataset[k] = v;
     g.appendChild(b);
   }
   if (open) {
@@ -178,7 +188,8 @@ function renderList() {
       const arr = (byCwd.get(w.path) || []).slice();
       const g = groupEl("w:" + w.id, ICONS.folder, w.name, arr.length, arr, startToday,
         { icon: ICONS.more, title: "Akce prostoru" }, { act: "wsmenu", wid: w.id }, "Zatím žádná konverzace",
-        { icon: ICONS.plus, title: "Nová konverzace v prostoru", data: { act: "wsnew", wid: w.id } });
+        { icon: ICONS.plus, title: "Nová konverzace v prostoru", data: { act: "wsnew", wid: w.id } },
+        { icon: ICONS.usage, title: "Dashboard prostoru", data: { act: "wsdash", wid: w.id } });
       g.querySelector(".grp-head").title = w.path + (w.exists ? "" : " (složka neexistuje)");
       frag.appendChild(g);
     }
@@ -362,6 +373,7 @@ function onListClick(e) {
     if (a === "newchat") startChatIn(act.dataset.cwd);
     else if (a === "newws") editWorkspace(null);
     else if (a === "wsnew") startWorkspaceChat(act.dataset.wid);
+    else if (a === "wsdash") openWorkspaceDashboard(act.dataset.wid);
     else if (a === "wsmenu") workspaceMenu(act, act.dataset.wid);
     else if (a === "newfolder") newFolder();
     else if (a === "foldermenu") folderMenu(act, act.dataset.fid);

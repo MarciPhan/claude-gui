@@ -153,3 +153,19 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
 .ws-out.fail{border-color:#c0504d}
 .empty-note{padding:6px 10px 10px;font-size:12px;color:var(--faint,#888);line-height:1.45}
 .grp-act.second{right:32px}
+.grp-act.third{right:60px}
+.wsd-sec{margin:0 0 26px}
+.wsd-sec>h2{margin:0 0 10px;font-size:13px;font-weight:650;color:var(--muted);text-transform:none}
+.wsd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.wsd-card{display:flex;flex-direction:column;gap:6px;text-align:left;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-sm);cursor:pointer}
+.wsd-card:hover{border-color:var(--accent)}
+.wsd-card b{font-size:14px}
+.wsd-card span{font-size:12px;color:var(--muted);line-height:1.45}
+.wsd-card.cmd{flex-direction:row;align-items:center;gap:8px;padding:10px 12px}
+.wsd-card.cmd .ic{width:15px;height:15px}
+.wsd-recent{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden}
+.wsd-recent button{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border:0;border-bottom:1px solid var(--border);background:transparent;text-align:left}
+.wsd-recent button:last-child{border-bottom:0}
+.wsd-recent button:hover{background:var(--hover)}
+.wsd-recent small{color:var(--faint,#888);white-space:nowrap}
+.wsd-note{white-space:pre-wrap;font-size:12.5px;line-height:1.55;color:var(--muted);padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}

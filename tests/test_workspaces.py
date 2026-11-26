@@ -33,6 +33,14 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(len(w["commands"]), 1)
         self.assertTrue(w["exists"])
 
+    def test_actions_cleaned(self):
+        w = self._save(actions=[{"name": "A", "prompt": " text "}, {"name": "B", "prompt": ""}, "x"])
+        self.assertEqual(w["actions"], [{"name": "A", "desc": "", "prompt": "text"}])
+
+    def test_actions_cleaned(self):
+        w = self._save(actions=[{"name": "A", "desc": "d", "prompt": " text "}, {"name": "B", "prompt": "  "}, "x"])
+        self.assertEqual(w["actions"], [{"name": "A", "desc": "d", "prompt": "text"}])
+
     def test_run_command_by_index(self):
         self._save()
         r = core.run_workspace_command({"id": "a1", "index": 0})
