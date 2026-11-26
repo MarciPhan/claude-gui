@@ -46,6 +46,7 @@ async function send(queuedText, queuedAtt, target) {
           chat_id: chatId,
           session_id: cur.id || null,
           cwd: cur.cwd,
+          workspace: cur.workspace || null,
           message: fullText,
           attachments: atts.map((a) => a.path),
           mode: $("mode").value,

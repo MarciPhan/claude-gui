@@ -153,14 +153,34 @@ function renderList() {
       if (!byCwd.has(k)) byCwd.set(k, []);
       byCwd.get(k).push(s);
     }
-    const projects = [...byCwd.entries()].sort((a, b) => b[1][0].mtime - a[1][0].mtime);
-    const head = document.createElement("div");
-    head.className = "sec-head";
-    head.innerHTML = "<span>Projekty (podle pracovní složky)</span>";
-    frag.appendChild(head);
+    const wsPaths = new Set(state.ws.items.map((w) => w.path));
+    const wsHead = document.createElement("div");
+    wsHead.className = "sec-head";
+    wsHead.innerHTML = '<span>Pracovní prostory</span><button type="button" class="icon-btn" data-act="newws" title="Nový pracovní prostor" aria-label="Nový pracovní prostor">' + ICONS.plus + "</button>";
+    frag.appendChild(wsHead);
+    if (!state.ws.items.length) {
+      const hint = document.createElement("div");
+      hint.className = "empty-note";
+      hint.textContent = "Prostor spojí složku, výchozí nastavení, instrukce a příkazy. Vytvoř ho tlačítkem +.";
+      frag.appendChild(hint);
+    }
+    for (const w of state.ws.items) {
+      const arr = (byCwd.get(w.path) || []).slice();
+      const g = groupEl("w:" + w.id, ICONS.folder, w.name, arr.length, arr, startToday,
+        { icon: ICONS.more, title: "Akce prostoru" }, { act: "wsmenu", wid: w.id }, "Zatím žádná konverzace");
+      g.querySelector(".grp-head").title = w.path + (w.exists ? "" : " (složka neexistuje)");
+      frag.appendChild(g);
+    }
+    const projects = [...byCwd.entries()].filter(([k]) => !wsPaths.has(k)).sort((a, b) => b[1][0].mtime - a[1][0].mtime);
+    if (projects.length) {
+      const head = document.createElement("div");
+      head.className = "sec-head";
+      head.innerHTML = "<span>Ostatní složky</span>";
+      frag.appendChild(head);
+    }
     for (const [cwd, arr] of projects) {
       const g = groupEl("p:" + cwd, ICONS.folder, basename(cwd) || cwd, arr.length, arr, startToday,
-        { icon: ICONS.plus, title: "Nová konverzace v tomto projektu" }, { act: "newchat", cwd });
+        { icon: ICONS.plus, title: "Nová konverzace v této složce" }, { act: "newchat", cwd });
       g.querySelector(".grp-head").title = cwd;
       frag.appendChild(g);
     }
@@ -329,6 +349,8 @@ function onListClick(e) {
     e.stopPropagation();
     const a = act.dataset.act;
     if (a === "newchat") startChatIn(act.dataset.cwd);
+    else if (a === "newws") editWorkspace(null);
+    else if (a === "wsmenu") workspaceMenu(act, act.dataset.wid);
     else if (a === "newfolder") newFolder();
     else if (a === "foldermenu") folderMenu(act, act.dataset.fid);
     return;

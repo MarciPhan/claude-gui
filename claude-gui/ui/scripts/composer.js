@@ -398,6 +398,7 @@ function init() {
   updateHeader();
   showWelcome();
   loadOrg();
+  loadWorkspaces();
   if (!IS_PANE) {
     loadGlimpse();
     loadLimits();

@@ -25,9 +25,8 @@
     <button id="btnNew" class="nav-new" type="button"></button>
     <nav class="nav" aria-label="Zobrazení">
       <button id="tabChat" class="nav-item active" type="button"><span data-icon="chat"></span><span>Konverzace</span></button>
-      <button id="tabProjects" class="nav-item" type="button"><span data-icon="folder"></span><span>Projekty</span></button>
+      <button id="tabProjects" class="nav-item" type="button"><span data-icon="folder"></span><span>Pracovní prostory</span></button>
       <button id="tabUsage" class="nav-item" type="button"><span data-icon="usage"></span><span>Využití</span></button>
-      <button id="tabVault" class="nav-item" type="button" title="Šifrovaný trezor přístupů k serverům (FTP, SSH…)"><span data-icon="key"></span><span>Přístupy</span></button>
       <button id="tabSplit" class="nav-item" type="button" title="Více konverzací vedle sebe (Ctrl+\)"><span data-icon="split"></span><span>Rozdělit</span></button>
     </nav>
     <div class="search">
@@ -242,6 +241,8 @@
       <button type="button" data-lang="en" translate="no">English</button>
     </div>
     <div class="field-hint">Automaticky = podle jazyka systému.</div>
+    <div class="field-label">Přístupy</div>
+    <button id="setVault" class="btn" type="button" title="Šifrovaný trezor přístupů k serverům (FTP, SSH…)">Přístupy (trezor)…</button>
   </div>
 </div>
 
@@ -258,6 +259,7 @@
 <!--@include scripts/transcript.js-->
 <!--@include scripts/shell.js-->
 <!--@include scripts/sessions.js-->
+<!--@include scripts/workspaces.js-->
 <!--@include scripts/conversation.js-->
 <!--@include scripts/chat.js-->
 <!--@include scripts/tools.js-->

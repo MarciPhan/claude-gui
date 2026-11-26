@@ -732,6 +732,10 @@ def api_call(method, path, query, body):
                 raise ApiError(str(exc))
         if path == "/api/limits_refresh":
             return refresh_limits()
+        if path == "/api/workspaces_save":
+            return save_workspaces(body or {})
+        if path == "/api/ws_run":
+            return run_workspace_command(body or {})
         if path == "/api/org_save":
             return save_org(body or {})
         raise ApiError("Neznámý endpoint.")
@@ -775,6 +779,8 @@ def api_call(method, path, query, body):
         return get_limits()
     if path == "/api/org":
         return get_org()
+    if path == "/api/workspaces":
+        return get_workspaces()
     if path == "/api/media":
         return media_data(query)
     if path == "/api/file_data":
@@ -1062,6 +1068,9 @@ def start_chat(body, emit):
     cmd += ["--append-system-prompt", GUI_HINT]
     if VAULT.exists():
         cmd += ["--append-system-prompt", vault.HINT, "--allowedTools", "Bash(cg-vault:*)"]
+    ws = _workspace(str(body.get("workspace") or "")) if not sid else None
+    if ws and ws["instructions"].strip() and os.path.abspath(ws["path"]) == cwd:
+        cmd += ["--append-system-prompt", "Instrukce pracovního prostoru „" + ws["name"] + "“:\n" + ws["instructions"]]
     if not sid:
         kb = LIBRARY.kb_prompt(body.get("kb") if isinstance(body.get("kb"), list) else [])
         if kb:
@@ -1169,6 +1178,7 @@ VAULT = vault.Vault(DATA_DIR / "vault.enc")
 BROKER = broker.Broker(VAULT)
 LIBRARY = extras.Library(DATA_DIR)
 ORG_FILE = DATA_DIR / "organize.json"
+WORKSPACES_FILE = DATA_DIR / "workspaces.json"
 _limits = {"five_hour": None, "seven_day": None, "ts": 0}
 _limits_lock = threading.Lock()
 _limits_loaded = False
@@ -1262,3 +1272,84 @@ def save_org(body):
     data = {"folders": folders, "assign": assign}
     _atomic_write(ORG_FILE, data)
     return data
+
+
+# ---------------------------------------------------------------------------
+# Pracovní prostory: pojmenovaná složka + výchozí nastavení, instrukce a příkazy
+# ---------------------------------------------------------------------------
+
+WS_RUN_TIMEOUT = 300
+WS_OUT_MAX = 20000
+
+
+def _clean_workspace(w):
+    if not isinstance(w, dict) or not isinstance(w.get("id"), str) or not isinstance(w.get("path"), str):
+        return None
+    cmds = []
+    for c in (w.get("commands") or [])[:30]:
+        if isinstance(c, dict) and str(c.get("cmd", "")).strip():
+            cmds.append({"name": str(c.get("name") or c["cmd"]).strip()[:60], "cmd": str(c["cmd"]).strip()[:2000]})
+    mode = w.get("mode")
+    model = w.get("model") or ""
+    prov = w.get("provider")
+    return {
+        "id": re.sub(r"[^A-Za-z0-9_-]", "", w["id"])[:40] or "w",
+        "name": str(w.get("name") or "").strip()[:80] or os.path.basename(w["path"].rstrip("/")) or "Prostor",
+        "path": os.path.abspath(os.path.expanduser(w["path"].strip())),
+        "instructions": str(w.get("instructions") or "")[:20000],
+        "commands": cmds,
+        "mode": mode if mode in MODES else "",
+        "model": model if isinstance(model, str) and (not model or MODEL_RE.match(model)) else "",
+        "provider": prov if prov in ("claude", *providers.CLI) else "",
+    }
+
+
+def get_workspaces():
+    try:
+        data = json.loads(WORKSPACES_FILE.read_text("utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    items = [x for x in (_clean_workspace(w) for w in data.get("items", [])) if x]
+    for x in items:
+        x["exists"] = os.path.isdir(x["path"])
+    return {"items": items}
+
+
+def save_workspaces(body):
+    seen, items = set(), []
+    for w in (body.get("items") or [])[:100]:
+        c = _clean_workspace(w)
+        if c and c["id"] not in seen:
+            seen.add(c["id"])
+            items.append(c)
+    _atomic_write(WORKSPACES_FILE, {"items": items})
+    return get_workspaces()
+
+
+def _workspace(wid):
+    return next((w for w in get_workspaces()["items"] if w["id"] == wid), None)
+
+
+def run_workspace_command(body):
+    """Spustí uložený příkaz prostoru (podle id a pořadí, ne podle textu z UI) v jeho složce."""
+    w = _workspace(str(body.get("id") or ""))
+    try:
+        cmd = w["commands"][int(body.get("index"))]["cmd"]
+    except (TypeError, ValueError, IndexError, KeyError):
+        raise ApiError("Příkaz v tomto prostoru neexistuje.")
+    if not w["exists"]:
+        raise ApiError("Složka prostoru neexistuje: " + w["path"])
+    env = dict(os.environ)
+    env.pop("CLAUDECODE", None)
+    t0 = time.time()
+    try:
+        r = subprocess.run(["bash", "-lc", cmd], cwd=w["path"], env=env, stdin=subprocess.DEVNULL,
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=WS_RUN_TIMEOUT)
+        out, code = r.stdout.decode("utf-8", "replace"), r.returncode
+    except subprocess.TimeoutExpired as exc:
+        out, code = (exc.stdout or b"").decode("utf-8", "replace") + f"\n[přerušeno po {WS_RUN_TIMEOUT} s]", None
+    except OSError as exc:
+        raise ApiError(str(exc))
+    if len(out) > WS_OUT_MAX:
+        out = "[… zkráceno …]\n" + out[-WS_OUT_MAX:]
+    return {"code": code, "output": out, "seconds": round(time.time() - t0, 1), "cmd": cmd}

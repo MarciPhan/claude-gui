@@ -142,3 +142,13 @@ video.media-video { display: block; max-width: min(100%, 640px); max-height: 420
 #toolsBody{max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:8px}
 #toolsBody textarea{width:100%;min-height:160px;font:inherit;background:var(--hover);color:var(--text);border:1px solid var(--border,#444);border-radius:8px;padding:8px}
 #toolsBody .cwd-item{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.ws-card{width:min(640px,100%);max-height:90vh;display:flex;flex-direction:column}
+.ws-form{display:flex;flex-direction:column;gap:12px;overflow:auto;padding:2px}
+.ws-field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
+.ws-field>span{font-size:12px;font-weight:600;color:var(--muted,inherit)}
+.ws-field small{font-size:11px;opacity:.7}
+.ws-row{display:flex;gap:10px}
+.ws-ta{font-family:inherit;resize:vertical}
+.ws-out{margin:0;padding:12px;max-height:60vh;overflow:auto;white-space:pre-wrap;word-break:break-word;font:12px var(--mono);background:var(--bg);border:1px solid var(--border);border-radius:9px}
+.ws-out.fail{border-color:#c0504d}
+.empty-note{padding:6px 10px 10px;font-size:12px;color:var(--faint,#888);line-height:1.45}
