@@ -341,6 +341,8 @@ function offerSwitch(live) {
 function handleEvent(ev, live) {
   switch (ev.type) {
     case "gui":
+      if (ev.subtype === "vault_ask") { vaultAsk(ev); return; }
+      if (ev.subtype === "vault_unlock") { vaultUnlockPrompt(); return; }
       if (ev.subtype === "run" && live.run) live.run.runId = ev.run_id;
       else if (ev.subtype === "exit" && ev.code !== 0 && !live.hadResult) {
         live.note("Claude skončil s kódem " + ev.code + "." + (ev.stderr ? "\n\n" + ev.stderr.trim() : ""), "error");

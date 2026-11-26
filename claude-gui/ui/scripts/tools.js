@@ -156,26 +156,79 @@ async function toolPreview() {
   });
 }
 
+const VAULT_MODES = { off: "AI nemá přístup", ask: "AI se ptá při každém použití", auto: "AI bez ptaní" };
+
+function pwField(ph) {
+  const i = document.createElement("input"); i.className = "text-input"; i.type = "password"; i.placeholder = ph; i.autocomplete = "off"; return i;
+}
+
 async function toolVault() {
-  let data;
-  try { data = await apiJson("/api/vault"); } catch (e) { showToast(e.message); return; }
+  const load = async () => { try { return await apiJson("/api/vault"); } catch (e) { showToast(e.message); return null; } };
+  let data = await load();
+  if (!data) return;
+  const refresh = async (body, ft) => { data = await load(); if (data) render(body, ft); };
+  const guard = async (fn, body, ft) => { try { await fn(); await refresh(body, ft); } catch (e) { showToast(e.message); } };
+
   const render = (body, ft) => {
     body.replaceChildren();
-    body.appendChild(noteEl("Hesla se ukládají do klíčenky systému a nikdy se nevrací do okna. AI je dostane jen jako proměnné prostředí u položek, které povolíte."));
-    if (!data.keyring) body.appendChild(noteEl("Chybí secret-tool (balíček libsecret), hesla nelze uložit.", "error"));
+    if (!data.exists) return setup(body, ft);
+    if (!data.unlocked) return unlock(body, ft);
+    body.appendChild(noteEl("Vše je v souboru šifrovaném hlavním heslem, které nikde neukládáme. AI hesla ani servery nezná: používá příkaz cg-vault a vy můžete každé použití potvrzovat."));
     for (const it of data.items) {
-      body.appendChild(mkRow(it.name + (it.ai ? " (AI)" : ""), it.kind + " " + (it.user ? it.user + "@" : "") + it.host + (it.port ? ":" + it.port : "") + (it.has_secret ? "" : " bez hesla"), [
+      body.appendChild(mkRow(it.name, it.kind + " " + (it.user ? it.user + "@" : "") + it.host + (it.port ? ":" + it.port : "") + " | " + VAULT_MODES[it.mode || "off"], [
         mkBtn("Upravit", () => form(it, body, ft)),
         mkBtn("Smazat", async () => {
-          if (!confirm("Smazat přístup včetně hesla z klíčenky?")) return;
-          await apiJson("/api/vault_delete", { method: "POST", body: JSON.stringify({ id: it.id }) });
-          data.items = data.items.filter((x) => x !== it); render(body, ft);
+          if (!confirm("Smazat tento přístup včetně hesla?")) return;
+          guard(() => apiJson("/api/vault_delete", { method: "POST", body: JSON.stringify({ id: it.id }) }), body, ft);
         }),
       ]));
     }
     if (!data.items.length) body.appendChild(noteEl("Zatím žádné přístupy."));
-    ft.replaceChildren(mkBtn("Přidat přístup", () => form(null, body, ft)), mkBtn("Zavřít", closeTools, true));
+    ft.replaceChildren(
+      mkBtn("Přidat přístup", () => form(null, body, ft)),
+      mkBtn("Historie", () => history(body, ft)),
+      mkBtn("Změnit heslo", () => change(body, ft)),
+      mkBtn("Zamknout", () => guard(() => apiJson("/api/vault_lock", { method: "POST", body: "{}" }), body, ft)),
+      mkBtn("Zavřít", closeTools, true));
   };
+
+  const setup = (body, ft) => {
+    body.appendChild(noteEl("Vytvořte hlavní heslo trezoru (alespoň 8 znaků). Heslo se nikam neukládá, bez něj nejdou údaje obnovit. Trezor se po 30 minutách nečinnosti sám zamkne."));
+    const p1 = pwField("Hlavní heslo"), p2 = pwField("Hlavní heslo znovu"); body.append(p1, p2);
+    ft.replaceChildren(mkBtn("Zavřít", closeTools), mkBtn("Vytvořit trezor", () => {
+      if (p1.value !== p2.value) { showToast("Hesla se neshodují."); return; }
+      guard(() => apiJson("/api/vault_setup", { method: "POST", body: JSON.stringify({ password: p1.value }) }), body, ft);
+    }, true));
+    setTimeout(() => p1.focus(), 0);
+  };
+
+  const unlock = (body, ft) => {
+    body.appendChild(noteEl("Trezor je zamčený."));
+    const p = pwField("Hlavní heslo"); body.appendChild(p);
+    const go = () => guard(() => apiJson("/api/vault_unlock", { method: "POST", body: JSON.stringify({ password: p.value }) }), body, ft);
+    p.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+    ft.replaceChildren(mkBtn("Zavřít", closeTools), mkBtn("Odemknout", go, true));
+    setTimeout(() => p.focus(), 0);
+  };
+
+  const change = (body, ft) => {
+    body.replaceChildren();
+    const o = pwField("Současné heslo"), n = pwField("Nové heslo (alespoň 8 znaků)"), n2 = pwField("Nové heslo znovu"); body.append(o, n, n2);
+    ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)), mkBtn("Změnit", () => {
+      if (n.value !== n2.value) { showToast("Hesla se neshodují."); return; }
+      guard(() => apiJson("/api/vault_change", { method: "POST", body: JSON.stringify({ old: o.value, new: n.value }) }), body, ft);
+    }, true));
+  };
+
+  const history = async (body, ft) => {
+    body.replaceChildren();
+    let rows = [];
+    try { rows = (await apiJson("/api/vault_log")).items; } catch (e) { showToast(e.message); }
+    if (!rows.length) body.appendChild(noteEl("Zatím žádné použití."));
+    for (const r of rows) body.appendChild(mkRow(r.name + ": " + r.detail, new Date(r.ts * 1000).toLocaleString("cs-CZ") + " | " + (r.allowed ? (r.ok === false ? "selhalo" : "provedeno") : "zamítnuto"), []));
+    ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)), mkBtn("Zavřít", closeTools, true));
+  };
+
   const form = (it, body, ft) => {
     body.replaceChildren();
     const f = {};
@@ -183,26 +236,41 @@ async function toolVault() {
       const i = document.createElement("input"); i.className = "text-input"; i.placeholder = ph; i.type = type || "text";
       i.value = it && it[key] ? it[key] : ""; i.autocomplete = "off"; f[key] = i; body.appendChild(i); return i;
     };
+    const sel = (opts, cur) => {
+      const k = document.createElement("select"); k.className = "text-input";
+      for (const [v, t] of opts) { const o = document.createElement("option"); o.value = v; o.textContent = t; k.appendChild(o); }
+      k.value = cur; body.appendChild(k); return k;
+    };
     field("name", "Název (např. Web klienta)");
-    const k = document.createElement("select"); k.className = "text-input";
-    for (const x of ["ftp", "sftp", "ssh", "api", "db", "other"]) { const o = document.createElement("option"); o.value = x; o.textContent = x; k.appendChild(o); }
-    k.value = it ? it.kind : "ftp"; body.appendChild(k);
+    const kind = sel([["ftp", "FTP / FTPS"], ["ssh", "SSH"], ["api", "API (https)"], ["other", "Jiné"]], it ? it.kind : "ftp");
     field("host", "Server (host)"); field("port", "Port (volitelné)"); field("user", "Uživatel");
-    const pw = field("secret", it && it.has_secret ? "Heslo (prázdné = beze změny)" : "Heslo", "password");
-    field("note", "Poznámka pro AI (volitelné)");
+    field("secret", it && it.has_secret ? "Heslo (prázdné = beze změny)" : "Heslo nebo token", "password");
+    field("note", "Poznámka pro AI (k čemu přístup slouží)");
+    const mode = sel(Object.entries(VAULT_MODES), it ? it.mode || "off" : "ask");
     const lab = document.createElement("label"); lab.style.display = "flex"; lab.style.gap = "8px"; lab.style.alignItems = "center";
-    const ai = document.createElement("input"); ai.type = "checkbox"; ai.checked = !!(it && it.ai);
-    lab.append(ai, document.createTextNode("Dát k dispozici AI (jako proměnné prostředí)")); body.appendChild(lab);
-    ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)), mkBtn("Uložit", async () => {
-      const payload = { id: it ? it.id : "", kind: k.value, ai: ai.checked };
+    const plain = document.createElement("input"); plain.type = "checkbox"; plain.checked = !!(it && it.plain);
+    lab.append(plain, document.createTextNode("Povolit nešifrované FTP (jen když server FTPS neumí)")); body.appendChild(lab);
+    ft.replaceChildren(mkBtn("Zpět", () => render(body, ft)), mkBtn("Uložit", () => {
+      const payload = { id: it ? it.id : "", kind: kind.value, mode: mode.value, plain: plain.checked };
       for (const key of Object.keys(f)) payload[key] = f[key].value;
-      try {
-        const r = await apiJson("/api/vault_save", { method: "POST", body: JSON.stringify(payload) });
-        pw.value = ""; data = await apiJson("/api/vault"); render(body, ft);
-      } catch (e) { showToast(e.message); }
+      guard(() => apiJson("/api/vault_save", { method: "POST", body: JSON.stringify(payload) }), body, ft);
     }, true));
   };
   openTools("Přístupy (trezor)", render);
+}
+
+/* události z běhu: potvrzení použití přístupu a výzva k odemknutí trezoru */
+function vaultAsk(ev) {
+  openTools("AI chce použít přístup", (body, ft) => {
+    body.appendChild(noteEl("Přístup: " + ev.name));
+    const pre = document.createElement("pre"); pre.style.whiteSpace = "pre-wrap"; pre.textContent = ev.detail; body.appendChild(pre);
+    const answer = (allow) => { apiJson("/api/vault_answer", { method: "POST", body: JSON.stringify({ id: ev.id, allow }) }).catch(() => {}); closeTools(); };
+    ft.replaceChildren(mkBtn("Zamítnout", () => answer(false)), mkBtn("Povolit", () => answer(true), true));
+  });
+}
+function vaultUnlockPrompt() {
+  if (!toolsDlg().hidden) return;
+  toolVault();
 }
 
 function toolCompact() {

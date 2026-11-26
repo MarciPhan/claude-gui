@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Příkaz pro AI: použije přístupy z trezoru Claude GUI, aniž by znala hesla.
+
+  cg-vault list
+  cg-vault ftp NÁZEV ls [cesta] | pwd | cat cesta | get vzdálená [místní] | put místní vzdálená | rm | mkdir | rmdir | mv
+  cg-vault ssh NÁZEV "příkaz na serveru"
+  cg-vault http NÁZEV GET|POST|PUT|PATCH|DELETE https://… [data]
+"""
+import json
+import os
+import socket
+import sys
+
+
+def main():
+    a = sys.argv[1:]
+    if not a or a[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    sock, tok = os.environ.get("CG_VAULT_SOCK"), os.environ.get("CG_VAULT_TOKEN")
+    if not sock or not tok:
+        print("cg-vault funguje jen uvnitř Claude GUI.", file=sys.stderr)
+        return 2
+    op = a[0]
+    req = {"token": tok, "op": op}
+    if op != "list":
+        if len(a) < 2:
+            print(__doc__, file=sys.stderr)
+            return 2
+        req["name"], req["args"] = a[1], a[2:]
+    s = socket.socket(socket.AF_UNIX)
+    s.settimeout(330)
+    try:
+        s.connect(sock)
+        s.sendall(json.dumps(req).encode() + b"\n")
+        buf = b""
+        while True:
+            c = s.recv(65536)
+            if not c:
+                break
+            buf += c
+        res = json.loads(buf)
+    except (OSError, ValueError) as exc:
+        print(f"Spojení s Claude GUI selhalo: {exc}", file=sys.stderr)
+        return 3
+    print(res.get("out", ""), file=sys.stdout if res.get("ok") else sys.stderr)
+    return 0 if res.get("ok") else 1
+
+
+sys.exit(main())

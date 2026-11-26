@@ -19,6 +19,7 @@ import gi
 gi.require_version("Gtk", "4.0"); gi.require_version("Adw", "1")
 gi.require_version("WebKit", "6.0"); gi.require_version("JavaScriptCore", "6.0")
 PY
+python3 -c "import cryptography" 2>/dev/null || msg "Upozornění: chybí python3-cryptography, trezor přístupů nepůjde použít." "Warning: python3-cryptography is missing, the credentials vault will not work."
 command -v claude >/dev/null || msg "Upozornění: příkaz 'claude' (Claude Code CLI) není v PATH, bez něj aplikace nic neodešle." "Warning: 'claude' (Claude Code CLI) is not in PATH; the app cannot send anything without it."
 
 mkdir -p "$APP" "$(dirname "$DESK")" "$(dirname "$ICON")"

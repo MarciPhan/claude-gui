@@ -42,6 +42,9 @@ Konverzace se čtou z `~/.claude/projects` (stejné jako CLI). Nahrané příloh
 
 Kromě Claude Code umí aplikace komunikovat i s Codex CLI a OpenCode (jsou-li nainstalované); poskytovatele vyberete v nabídce modelu. Všechny sdílejí jednu konverzaci, takže když Claudovi dojdou tokeny, pokračujete jiným. Nabídka nástrojů (tlačítko s klíčem v poli zprávy) přidává knihovnu promptů, znalostní bázi, recenzi druhým modelem, `/compact`, export do Markdown/HTML/PDF, boční náhled webu či lokální aplikace a kontrolní body v gitu (obnova pracovní složky před libovolným během). Po najetí na zprávu ji můžete větvit do nové konverzace.
 
+### Trezor přístupů
+Přístupy k serverům (FTP/FTPS, SSH, API) jsou v jednom souboru šifrovaném AES-256-GCM; klíč se odvozuje (scrypt) z hlavního hesla, které se nikam neukládá a po odemknutí existuje jen v paměti (automatické zamčení po 30 minutách). AI nezná hesla ani adresy serverů: volá `cg-vault`, který přes soukromý unixový socket komunikuje s aplikací. Ta operaci provede, na přání ji před každým použitím potvrdíte (s přesným příkazem), z výstupu odstraní heslo a vede záznam použití. Paměť procesu je nečitelná z jiných procesů (bez ptrace a `/proc/<pid>/mem`) a údaje se posílají jen na vlastní server. Vyžaduje `python3-cryptography`, u hesel k SSH též `sshpass`.
+
 ## Licence a třetí strany
 
 Kód: MIT. Součástí jsou knihovny [KaTeX](https://katex.org) (MIT) a [Mermaid](https://mermaid.js.org) (MIT) v adresáři `claude-gui/vendor`. „Claude“ a jeho logo jsou ochranné známky společnosti Anthropic; projekt je neoficiální.

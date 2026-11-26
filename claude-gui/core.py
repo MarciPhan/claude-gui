@@ -31,7 +31,14 @@ APP_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(APP_DIR))
 import extras  # noqa: E402
 import providers
+import broker  # noqa: E402
 import vault  # noqa: E402
+try:  # paměť procesu (odemčený trezor) nesmí jít číst z ostatních procesů uživatele, ani přes ptrace
+    import ctypes
+    ctypes.CDLL(None).prctl(4, 0, 0, 0, 0)  # PR_SET_DUMPABLE = 0
+except (OSError, AttributeError):
+    pass
+
 UI_DIR = APP_DIR / "ui"
 INDEX_FILE = UI_DIR / "index.html"
 INCLUDE_RE = re.compile(r"^<!--@include ([\w\-]+/[\w\-]+\.(?:css|js))-->\n", re.M)
@@ -636,6 +643,26 @@ class ApiError(Exception):
     pass
 
 
+def _with_vault(emit, cwd):
+    """Pro běh vydá token zprostředkovatele (příkaz cg-vault); po skončení běhu ho zneplatní."""
+    if not VAULT.exists():
+        return emit, {}
+    tok, env = BROKER.issue(emit, cwd)
+
+    def wrapped(ev):
+        if isinstance(ev, dict) and ev.get("type") == "gui" and ev.get("subtype") == "exit":
+            BROKER.revoke(tok)
+        emit(ev)
+    return wrapped, env
+
+
+def _vault_call(fn, *a):
+    try:
+        return fn(*a)
+    except vault.VaultError as exc:
+        raise ApiError(str(exc))
+
+
 def api_call(method, path, query, body):
     """Obsluha jednoho požadavku z UI; vrací JSON-serializovatelný objekt."""
     if method == "POST":
@@ -670,14 +697,27 @@ def api_call(method, path, query, body):
         if path == "/api/kb_delete":
             LIBRARY.kb_delete((body or {}).get("name"))
             return {"ok": True}
-        if path == "/api/vault_save":
-            try:
-                return {"id": VAULT.save(body or {})}
-            except (ValueError, RuntimeError) as exc:
-                raise ApiError(str(exc))
-        if path == "/api/vault_delete":
-            VAULT.delete(str((body or {}).get("id", "")))
+        if path == "/api/vault_setup":
+            _vault_call(VAULT.setup, str((body or {}).get("password", "")))
             return {"ok": True}
+        if path == "/api/vault_unlock":
+            _vault_call(VAULT.unlock, str((body or {}).get("password", "")))
+            return {"ok": True}
+        if path == "/api/vault_lock":
+            VAULT.lock()
+            return {"ok": True}
+        if path == "/api/vault_change":
+            b = body or {}
+            _vault_call(VAULT.change_password, str(b.get("old", "")), str(b.get("new", "")))
+            return {"ok": True}
+        if path == "/api/vault_save":
+            return {"id": _vault_call(VAULT.save, body or {})}
+        if path == "/api/vault_delete":
+            _vault_call(VAULT.delete, str((body or {}).get("id", "")))
+            return {"ok": True}
+        if path == "/api/vault_answer":
+            b = body or {}
+            return {"ok": BROKER.answer(str(b.get("id", "")), bool(b.get("allow")))}
         if path == "/api/export":
             b = body or {}
             fmt = b.get("fmt")
@@ -710,7 +750,14 @@ def api_call(method, path, query, body):
             raise ApiError("Dokument nenalezen.")
         return {"text": t}
     if path == "/api/vault":
-        return {"items": VAULT.list(), "keyring": vault.available()}
+        un = VAULT.unlocked()
+        return {"exists": VAULT.exists(), "unlocked": un, "items": VAULT.list() if un else []}
+    if path == "/api/vault_log":
+        try:
+            rows = BROKER.log_path.read_text("utf-8").splitlines()[-40:]
+        except OSError:
+            rows = []
+        return {"items": [json.loads(r) for r in rows if r.startswith("{")][::-1]}
     if path == "/api/ports":
         return {"items": extras.listening_ports()}
     if path == "/api/providers":
@@ -990,9 +1037,9 @@ def start_chat(body, emit):
     ephemeral = bool(body.get("ephemeral"))
     if not ephemeral:
         emit = _with_checkpoint(emit, cwd, message, sid)
+    emit, vault_env = _with_vault(emit, cwd)
     if prov in providers.CLI:
-        v_env, v_lines = VAULT.ai_env()
-        ctx = {"env": v_env, "hint": vault.hint(v_lines), "projects_dir": PROJECTS_DIR, "find_file": lambda s: find_session_file(s) if s else None,
+        ctx = {"env": vault_env, "hint": vault.HINT if VAULT.exists() else "", "projects_dir": PROJECTS_DIR, "find_file": lambda s: find_session_file(s) if s else None,
                "transcript": load_transcript, "store": PROVIDER_STORE,
                "register": lambda rid, p: RUNS.__setitem__(rid, p), "unregister": lambda rid: RUNS.pop(rid, None)}
         try:
@@ -1014,9 +1061,8 @@ def start_chat(body, emit):
     if body.get("lean", True) is not False:
         cmd += LEAN_FLAGS
     cmd += ["--append-system-prompt", GUI_HINT]
-    vault_env, vault_lines = VAULT.ai_env()
-    if vault_lines:
-        cmd += ["--append-system-prompt", vault.hint(vault_lines)]
+    if VAULT.exists():
+        cmd += ["--append-system-prompt", vault.HINT, "--allowedTools", "Bash(cg-vault:*)"]
     if not sid:
         kb = LIBRARY.kb_prompt(body.get("kb") if isinstance(body.get("kb"), list) else [])
         if kb:
@@ -1120,7 +1166,8 @@ DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "sha
 LIMITS_FILE = DATA_DIR / "limits.json"
 PROVIDER_STORE = providers.Store(DATA_DIR / "provider_sessions.json")
 CHECKPOINTS = extras.Checkpoints(DATA_DIR / "checkpoints.json")
-VAULT = vault.Vault(DATA_DIR / "vault.json")
+VAULT = vault.Vault(DATA_DIR / "vault.enc")
+BROKER = broker.Broker(VAULT, DATA_DIR / "vault-log.jsonl")
 LIBRARY = extras.Library(DATA_DIR)
 ORG_FILE = DATA_DIR / "organize.json"
 _limits = {"five_hour": None, "seven_day": None, "ts": 0}

@@ -38,6 +38,9 @@ Copies the app to `~/.local/share/claude-gui` and adds a "Claude Code" launcher 
 
 Besides Claude Code the app can talk to the Codex CLI and OpenCode (if installed); pick the provider in the model menu. All providers share one conversation, so you can continue with another one when Claude runs out of tokens. The tools menu (wrench button in the composer) adds a prompt library, a knowledge base, review by a second model, `/compact`, export to Markdown/HTML/PDF, a side preview of a web page or local app, and git checkpoints (restore the working tree from before any run). Hover a message to branch the conversation from it.
 
+### Credentials vault
+Server credentials (FTP/FTPS, SSH, API) live in one file encrypted with AES-256-GCM; the key is derived (scrypt) from a master password that is never stored and exists only in memory while the vault is unlocked (auto-lock after 30 min). The AI never sees passwords or even server addresses: it calls `cg-vault`, which talks over a private unix socket to the app. The app performs the operation, can ask you to confirm every use (shown with the exact command), scrubs the password from the output and keeps an audit log. The process memory is non-dumpable (no ptrace or `/proc/<pid>/mem` access from other processes), and credentials are only ever sent to their own host. Requires `python3-cryptography`; SSH passwords need `sshpass`.
+
 ## Data
 
 Conversations are read from `~/.claude/projects` (the same as the CLI). Uploaded attachments live in `~/.local/share/claude-gui-data/uploads` and are deleted after 14 days.
